@@ -15,10 +15,9 @@
   ></div>
 {% else %}
   <script>
-    {% comment %}
-      // Redirect to login page if not logged in
+
       window.location.href = '{{ routes.account_login_url }}';
-    {% endcomment %}
+    
   </script>
 {% endif %}
 
