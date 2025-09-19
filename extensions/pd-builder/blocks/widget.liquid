@@ -1,0 +1,34 @@
+{% if customer %}
+  {% liquid
+    assign customer_id = customer.id | default: ''
+    assign customer_email = customer.email | default: ''
+    assign customer_name = customer.first_name | append: ' ' | append: customer.last_name | strip
+  %}
+
+  {% capture customer_data %}
+    {
+      "id": "{{ customer_id | escape }}",
+      "email": "{{ customer_email | escape }}",
+      "name": "{{ customer_name | escape }}"
+    }
+  {% endcapture %}
+
+  <div
+    id="WIDGET"
+    data-customer="{{ customer_data | escape }}"
+  ></div>
+{% else %}
+  <script>
+    {% comment %}
+      // Optional: redirect to login page if no customer is logged in
+      // window.location.href = '{{ routes.account_login_url }}';
+    {% endcomment %}
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "PD WIDGET",
+  "target": "section"
+}
+{% endschema %}

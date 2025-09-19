@@ -1,0 +1,35 @@
+<link rel="stylesheet" href="{{ 'main.css' | asset_url }}">
+<script type="module" src="{{ 'index.js' | asset_url }}" defer></script>
+
+{% if customer %}
+  {% liquid
+    assign customer_id = customer.id | default: ''
+    assign customer_email = customer.email | default: ''
+    assign customer_name = customer.first_name | append: ' ' | append: customer.last_name | strip
+  %}
+
+  {% capture customer_data %}
+    {
+      "id": "{{ customer_id | escape }}",
+      "email": "{{ customer_email | escape }}",
+      "name": "{{ customer_name | escape }}"
+    }
+  {% endcapture %}
+
+  <div
+    id="PRODUCT_BUILDER"
+    data-customer="{{ customer_data | escape }}"
+  ></div>
+
+{% else %}
+  <script>
+    {% comment %} window.location.href = '{{ routes.account_login_url }}'; {% endcomment %}
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Product Builder",
+  "target": "body"
+}
+{% endschema %}

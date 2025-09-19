@@ -1,0 +1,30 @@
+{% if customer %}
+  {% liquid
+    assign customer_id = customer.id | default: ''
+    assign customer_email = customer.email | default: ''
+    assign customer_name = customer.first_name | append: ' ' | append: customer.last_name | strip
+  %}
+
+  {% capture customer_data %}
+    {"id":"{{ customer_id }}","email":"{{ customer_email }}","name":"{{ customer_name }}"}
+  {% endcapture %}
+
+  <div
+    id="PRODUCT_BUILDER_SUBSCRIPTIONS"
+    data-customer="{{ customer_data | escape }}"
+  ></div>
+{% else %}
+  <script>
+    {% comment %}
+      // Redirect to login page if not logged in
+      window.location.href = '{{ routes.account_login_url }}';
+    {% endcomment %}
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "PD SUBSCRIPTIONS",
+  "target": "section"
+}
+{% endschema %}
