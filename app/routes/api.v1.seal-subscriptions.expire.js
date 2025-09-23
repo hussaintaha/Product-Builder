@@ -37,7 +37,7 @@ export const action = async ({ request }) => {
         const { success, message, data: replitData } = data
         console.log('message: ', message);
 
-        return new Response(JSON.stringify({ success: true, message: "Subscription has been expired." }), { status: 200 })
+        return new Response(JSON.stringify({ success: true, message: "Subscription has been expire." }), { status: 200 })
 
     } catch (error) {
         if (error instanceof Error) {
