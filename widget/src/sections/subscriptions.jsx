@@ -1,14 +1,136 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 
-const Subscriptions = ({ loading, subscription, customer }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+// Pricing plans data (same as in PricingPlan component)
+const pricingPlans = [
+  {
+    tier: "Starter",
+    price: 19,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For first-time founders who just need help structuring their idea into a usable PRD.",
+    features: [
+      "Guided Problem Definition",
+      "AI powered root cause exploration",
+      "Customer Persona builder",
+      "Use Case Generator",
+      "PRD Generator",
+      "Access to Help and Glossary",
+      "Limited exports (PDF/Doc)",
+    ],
+    variant_id: "51921658839354",
+    product_id: "10031957508410",
+    group_id: "79129248058",
+  },
+  {
+    tier: "Growth",
+    price: 49,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For founders ready to take their PRD and plan their Go-To-Market (GTM) strategy.",
+    features: [
+      "Everything in Starter",
+      "GTM Strategy Builder",
+      "Target Market",
+      "Value Proposition",
+      "Positioning",
+      "Messaging",
+      "Pricing Strategy",
+      "Distribution Channels",
+      "Implementation Phases",
+      "Success Metrics",
+    ],
+    popular: true,
+    variant_id: "51921665753402",
+    product_id: "10031959441722",
+    group_id: "79129280826",
+  },
+  {
+    tier: "Pro",
+    price: 99,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For founders (and accelerators/VCs) who want to de-risk products with structured Problem–Solution Validation.",
+    features: [
+      "Everything in Growth",
+      "Problem Definition & Validation",
+      "Solution-Market fit Analysis",
+      "Customer Validation Summary",
+      "Competitive Gap Analysis",
+      "Risk Assessment",
+      "Validation Conclusion",
+      "Next Steps",
+    ],
+    variant_id: "51921671094586",
+    product_id: "10031960686906",
+    group_id: "79129313594",
+  },
+];
 
-  console.log("{loading, subscription, customer}: ", {
-    loading,
-    subscription,
-    customer,
-  });
+const Subscriptions = ({ customer }) => {
+  console.log("klkl");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [subscription, setSubscription] = useState(null);
+
+  const fetchSubscriptionHandler = useCallback(async () => {
+    if (!customer?.id) return;
+
+    setLoading(true);
+    let finalResult = null;
+
+    try {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await fetch(
+            `/apps/public/api/v1/public/seal-subscription/status`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ customerId: customer.id }),
+            },
+          );
+
+          const data = await response.json();
+          const { success, subscription } = data;
+
+          console.log(`Subscription Attempt ${attempt}:`, data);
+
+          if (success && subscription) {
+            finalResult = data;
+            break;
+          }
+        } catch (err) {
+          console.error(`Attempt ${attempt} failed:`, err);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    } finally {
+      if (finalResult?.success && finalResult.subscription) {
+        setSubscription(finalResult.subscription);
+        if (finalResult.subscription.subscription_status === "active") {
+          toast.success(finalResult.message || "Subscription found", {
+            position: "top-center",
+            progress: true,
+          });
+        }
+      } else {
+        setSubscription(null);
+        toast.error("Your subscription has expired. Please renew or upgrade.");
+      }
+      setLoading(false);
+    }
+  }, [customer?.id]);
+
+  useEffect(() => {
+    if (customer?.id) {
+      fetchSubscriptionHandler();
+    }
+  }, [customer?.id, fetchSubscriptionHandler]);
 
   useEffect(() => {
     // Add hover effects dynamically on mount
@@ -29,6 +151,16 @@ const Subscriptions = ({ loading, subscription, customer }) => {
       .back-btn:hover {
         background-color: #e5e7eb !important;
         transform: translateY(-1px);
+      }
+      .upgrade-plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        border-color: #3b82f6;
+      }
+      .upgrade-plan-btn:hover {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
       }
     `;
     document.head.appendChild(style);
@@ -67,6 +199,29 @@ const Subscriptions = ({ loading, subscription, customer }) => {
     }
   };
 
+  // Function to get available upgrade plans based on current subscription
+  const getUpgradePlans = (currentPlan) => {
+    const currentPlanName =
+      currentPlan?.subscribe_plan_name || currentPlan?.plan_name;
+
+    if (!currentPlanName || currentPlanName === "Free") {
+      return pricingPlans; // Show all plans for free users
+    }
+
+    switch (currentPlanName) {
+      case "Starter":
+        return pricingPlans.filter(
+          (plan) => plan.tier === "Growth" || plan.tier === "Pro",
+        );
+      case "Growth":
+        return pricingPlans.filter((plan) => plan.tier === "Pro");
+      case "Pro":
+        return []; // No upgrades available for Pro users
+      default:
+        return [];
+    }
+  };
+
   if (loading) {
     return (
       <div className="container" style={styles.container}>
@@ -80,6 +235,16 @@ const Subscriptions = ({ loading, subscription, customer }) => {
   const handleBackToAccount = () => {
     window.location.href = "/account";
   };
+
+  // Check if it's a free plan
+  const isFreeAccount =
+    subscription?.plan_name === "Free" ||
+    subscription?.subscription_plan_price === 0;
+  const hasValidSubscriptionId =
+    subscription?.subscription_id && subscription.subscription_id.trim() !== "";
+
+  // Get available upgrade plans
+  const upgradePlans = getUpgradePlans(subscription);
 
   return (
     <div className="container" style={styles.container}>
@@ -99,19 +264,43 @@ const Subscriptions = ({ loading, subscription, customer }) => {
 
           {/* Header */}
           <div style={styles.header}>
-            <h2 style={styles.title}>Your Active Subscription</h2>
+            <h2 style={styles.title}>
+              {isFreeAccount ? "Your Free Account" : "Your Subscription"}
+            </h2>
             <div style={styles.statusContainer}>
-              <span style={styles.statusBadge}>
-                <span style={styles.statusDot}></span>
-                {subscription.status}
+              <span
+                style={{
+                  ...styles.statusBadge,
+                  backgroundColor:
+                    subscription.subscription_status === "active"
+                      ? "#dcfce7"
+                      : "#fed7d7",
+                  color:
+                    subscription.subscription_status === "active"
+                      ? "#166534"
+                      : "#9b2c2c",
+                }}
+              >
+                <span
+                  style={{
+                    ...styles.statusDot,
+                    backgroundColor:
+                      subscription.subscription_status === "active"
+                        ? "#22c55e"
+                        : "#f56565",
+                  }}
+                ></span>
+                {subscription.subscription_status}
               </span>
-              <span style={styles.subscriptionId}>
-                ID: #{subscription.subscriptionId}
-              </span>
+              {hasValidSubscriptionId && (
+                <span style={styles.subscriptionId}>
+                  ID: #{subscription.subscription_id}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Customer Information & Items */}
+          {/* Customer Information */}
           <div style={styles.gridContainer}>
             {/* Customer Info */}
             <div style={styles.infoCard}>
@@ -120,185 +309,255 @@ const Subscriptions = ({ loading, subscription, customer }) => {
                 <div style={styles.infoRow}>
                   <span style={styles.label}>Name: </span>
                   <span style={styles.value}>
-                    {subscription.firstName} {subscription.lastName}
+                    {subscription.first_name} {subscription.last_name}
                   </span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.label}>Email: </span>
+                  <span style={styles.value}>{subscription.email}</span>
                 </div>
                 <div style={styles.infoRow}>
                   <span style={styles.label}>Customer ID: </span>
                   <span style={styles.customerIdValue}>
-                    {subscription.customerId}
+                    {subscription.customer_id}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Subscription Items */}
+            {/* Plan Details */}
             <div style={styles.infoCard}>
-              <h3 style={styles.cardTitle}>Subscription Items</h3>
-              {subscription.items &&
-                subscription.items.map((item) => (
-                  <div key={item.id} style={styles.infoContent}>
-                    <div style={styles.infoRow}>
-                      <span style={styles.label}>Plan: </span>
-                      <span style={styles.value}>{item.title}</span>
+              <h3 style={styles.cardTitle}>Plan Details</h3>
+              <div style={styles.infoContent}>
+                <div style={styles.infoRow}>
+                  <span style={styles.label}>Plan: </span>
+                  <span style={styles.value}>
+                    {subscription.subscribe_plan_name || subscription.plan_name}
+                  </span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.label}>Price: </span>
+                  <span style={styles.priceValue}>
+                    $
+                    {parseFloat(
+                      subscription.subscription_plan_price || 0,
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                {subscription.subscription_interval && (
+                  <div style={styles.infoRow}>
+                    <span style={styles.label}>Billing Cycle: </span>
+                    <span style={styles.value}>
+                      {subscription.subscription_interval}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Usage Summary */}
+          <div style={styles.pricingSummary}>
+            <h3 style={styles.cardTitle}>Usage Summary</h3>
+            <div style={styles.pricingGrid}>
+              <div style={styles.pricingItem}>
+                <div style={styles.pricingLabel}>Total Attempts</div>
+                <div style={styles.originalPrice}>
+                  {subscription.actual_attempts || 0}
+                </div>
+              </div>
+              <div style={styles.pricingItem}>
+                <div style={styles.pricingLabel}>Used Attempts</div>
+                <div style={styles.discountPrice}>
+                  {subscription.used_attempt || 0}
+                </div>
+              </div>
+              <div style={styles.pricingItem}>
+                <div style={styles.pricingLabel}>Remaining</div>
+                <div style={styles.finalPrice}>
+                  {(subscription.actual_attempts || 0) -
+                    (subscription.used_attempt || 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Upgrade Plans Section */}
+          {upgradePlans.length > 0 && (
+            <div style={styles.upgradeSection}>
+              <h3 style={styles.upgradeSectionTitle}>
+                {isFreeAccount ? "Available Plans" : "Upgrade Your Plan"}
+              </h3>
+              <p style={styles.upgradeSectionSubtitle}>
+                {isFreeAccount
+                  ? "Choose a plan to unlock premium features"
+                  : "Get access to more features and increase your limits"}
+              </p>
+              <div style={styles.upgradeGrid}>
+                {upgradePlans.map((plan) => (
+                  <div
+                    key={plan.tier}
+                    style={styles.upgradePlanCard}
+                    className="upgrade-plan-card"
+                  >
+                    <div style={styles.upgradePlanHeader}>
+                      <h4 style={styles.upgradePlanTier}>{plan.tier}</h4>
+                      <div style={styles.upgradePlanPrice}>
+                        <span style={styles.upgradePriceCurrency}>$</span>
+                        <span style={styles.upgradePriceAmount}>
+                          {plan.price}
+                        </span>
+                        <span style={styles.upgradePriceCycle}>
+                          /{plan.billingCycle}
+                        </span>
+                      </div>
+                      <p style={styles.upgradePlanPurpose}>{plan.purpose}</p>
                     </div>
-                    <div style={styles.infoRow}>
-                      <span style={styles.label}>Price: </span>
-                      <span style={styles.priceValue}>
-                        ${parseFloat(item.final_price).toFixed(2)}
-                      </span>
-                    </div>
-                    <div style={styles.infoRow}>
-                      <span style={styles.label}>Quantity: </span>
-                      <span style={styles.value}>{item.quantity}</span>
-                    </div>
-                    {item.properties &&
-                      item.properties.map((prop, index) => (
-                        <div key={index} style={styles.infoRow}>
-                          <span style={styles.label}>{prop.key}: </span>
-                          <span style={styles.value}>{prop.value}</span>
-                        </div>
+
+                    <ul style={styles.upgradeFeaturesList}>
+                      {plan.features.slice(0, 5).map((feature, index) => (
+                        <li key={index} style={styles.upgradeFeatureItem}>
+                          {feature}
+                        </li>
                       ))}
+                      {plan.features.length > 5 && (
+                        <li style={styles.upgradeFeatureMore}>
+                          +{plan.features.length - 5} more features
+                        </li>
+                      )}
+                    </ul>
                   </div>
                 ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Billing Summary */}
-          <div style={styles.pricingSummary}>
-            <h3 style={styles.cardTitle}>Billing Summary</h3>
-            <div style={styles.pricingGrid}>
-              {subscription.items &&
-                subscription.items.map((item) => (
-                  <React.Fragment key={item.id}>
-                    <div style={styles.pricingItem}>
-                      <div style={styles.pricingLabel}>Original Price</div>
-                      <div style={styles.originalPrice}>
-                        ${parseFloat(item.original_price).toFixed(2)}
-                      </div>
-                    </div>
-                    <div style={styles.pricingItem}>
-                      <div style={styles.pricingLabel}>Discount</div>
-                      <div style={styles.discountPrice}>
-                        -${parseFloat(item.total_discount).toFixed(2)}
-                      </div>
-                    </div>
-                    <div style={styles.pricingItem}>
-                      <div style={styles.pricingLabel}>Final Amount</div>
-                      <div style={styles.finalPrice}>
-                        ${parseFloat(item.final_price).toFixed(2)}
-                      </div>
-                    </div>
-                  </React.Fragment>
-                ))}
+          {/* Action Buttons - Only show for paid subscriptions with valid subscription ID */}
+          {!isFreeAccount && hasValidSubscriptionId && (
+            <div style={styles.buttonContainer}>
+              {subscription.subscription_status === "paused" ? (
+                <>
+                  {/* Resume Button */}
+                  <button
+                    onClick={() =>
+                      handleSubscriptionManage(
+                        subscription.subscription_id,
+                        "resume",
+                      )
+                    }
+                    disabled={isProcessing}
+                    className="activate-btn"
+                    style={{
+                      ...styles.button,
+                      ...styles.activateButton,
+                      ...(isProcessing ? styles.disabledButton : {}),
+                    }}
+                  >
+                    {isProcessing ? "Processing..." : "Resume Subscription"}
+                  </button>
+
+                  {/* Cancel Button */}
+                  <button
+                    onClick={() =>
+                      handleSubscriptionManage(
+                        subscription.subscription_id,
+                        "cancel",
+                      )
+                    }
+                    disabled={isProcessing}
+                    className="cancel-btn"
+                    style={{
+                      ...styles.button,
+                      ...styles.cancelButton,
+                      ...(isProcessing ? styles.disabledButton : {}),
+                    }}
+                  >
+                    {isProcessing ? "Processing..." : "Cancel Subscription"}
+                  </button>
+                </>
+              ) : subscription.subscription_status === "active" ? (
+                <>
+                  {/* Pause Button */}
+                  <button
+                    onClick={() =>
+                      handleSubscriptionManage(
+                        subscription.subscription_id,
+                        "pause",
+                      )
+                    }
+                    disabled={isProcessing}
+                    className="pause-btn"
+                    style={{
+                      ...styles.button,
+                      ...styles.pauseButton,
+                      ...(isProcessing ? styles.disabledButton : {}),
+                    }}
+                  >
+                    {isProcessing ? "Processing..." : "Pause Subscription"}
+                  </button>
+
+                  {/* Cancel Button */}
+                  <button
+                    onClick={() =>
+                      handleSubscriptionManage(
+                        subscription.subscription_id,
+                        "cancel",
+                      )
+                    }
+                    disabled={isProcessing}
+                    className="cancel-btn"
+                    style={{
+                      ...styles.button,
+                      ...styles.cancelButton,
+                      ...(isProcessing ? styles.disabledButton : {}),
+                    }}
+                  >
+                    {isProcessing ? "Processing..." : "Cancel Subscription"}
+                  </button>
+                </>
+              ) : null}
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={styles.buttonContainer}>
-            {subscription.status === "PAUSED" ? (
-              <>
-                {/* Reactivate Button */}
-                <button
-                  onClick={() =>
-                    handleSubscriptionManage(
-                      subscription.subscriptionId,
-                      "resume",
-                    )
-                  }
-                  disabled={isProcessing}
-                  className="activate-btn"
-                  style={{
-                    ...styles.button,
-                    ...styles.activateButton,
-                    ...(isProcessing ? styles.disabledButton : {}),
-                  }}
-                >
-                  {isProcessing ? "Processing..." : "Resume Subscription"}
-                </button>
-
-                {/* Cancel Button */}
-                <button
-                  onClick={() =>
-                    handleSubscriptionManage(
-                      subscription.subscriptionId,
-                      "cancel",
-                    )
-                  }
-                  disabled={isProcessing}
-                  className="cancel-btn"
-                  style={{
-                    ...styles.button,
-                    ...styles.cancelButton,
-                    ...(isProcessing ? styles.disabledButton : {}),
-                  }}
-                >
-                  {isProcessing ? "Processing..." : "Cancel Subscription"}
-                </button>
-              </>
-            ) : (
-              <>
-                {/* Pause Button */}
-                <button
-                  onClick={() =>
-                    handleSubscriptionManage(
-                      subscription.subscriptionId,
-                      "pause",
-                    )
-                  }
-                  disabled={isProcessing}
-                  className="pause-btn"
-                  style={{
-                    ...styles.button,
-                    ...styles.pauseButton,
-                    ...(isProcessing ? styles.disabledButton : {}),
-                  }}
-                >
-                  {isProcessing ? "Processing..." : "Pause Subscription"}
-                </button>
-
-                {/* Cancel Button */}
-                <button
-                  onClick={() =>
-                    handleSubscriptionManage(
-                      subscription.subscriptionId,
-                      "cancel",
-                    )
-                  }
-                  disabled={isProcessing}
-                  className="cancel-btn"
-                  style={{
-                    ...styles.button,
-                    ...styles.cancelButton,
-                    ...(isProcessing ? styles.disabledButton : {}),
-                  }}
-                >
-                  {isProcessing ? "Processing..." : "Cancel Subscription"}
-                </button>
-              </>
-            )}
-          </div>
+          )}
 
           {/* Help Text */}
           <div style={styles.helpText}>
             <div style={styles.helpContent}>
               <strong>Note:</strong>{" "}
-              {subscription.status === "ACTIVE" &&
+              {isFreeAccount &&
+                "You are currently on a free plan. Upgrade to a paid subscription to access premium features and increased usage limits."}
+              {!isFreeAccount &&
+                subscription.subscription_status === "active" &&
+                hasValidSubscriptionId &&
                 "Pausing your subscription will temporarily stop billing and deliveries. You can resume anytime. Canceling will permanently end your subscription."}
-              {subscription.status === "PAUSED" &&
+              {!isFreeAccount &&
+                subscription.subscription_status === "paused" &&
                 "Your subscription is currently paused. Reactivate to resume billing and deliveries, or cancel to permanently end your subscription."}
-              {subscription.status === "CANCELLED" &&
+              {!isFreeAccount &&
+                subscription.subscription_status === "cancelled" &&
                 "Your subscription has been cancelled. You can reactivate it to resume your subscription benefits."}
+              {!isFreeAccount &&
+                !hasValidSubscriptionId &&
+                "Subscription management is not available at this time. Please contact support if you need assistance."}
             </div>
           </div>
+
+          {/* Fallback Upgrade CTA for Free Users (if no plans shown above) */}
+          {isFreeAccount && upgradePlans.length === 0 && (
+            <div style={styles.upgradeSection}>
+              <button
+                onClick={() => (window.location.href = "/pricing")}
+                style={styles.upgradeButton}
+              >
+                View All Plans
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={styles.noSubscription}>
-          <div style={styles.noSubscriptionTitle}>
-            No active subscription found
-          </div>
+          <div style={styles.noSubscriptionTitle}>No subscription found</div>
           <p style={styles.noSubscriptionText}>
-            You don't have any active subscriptions at the moment.
+            You don't have any subscription information available at the moment.
           </p>
         </div>
       )}
@@ -355,13 +614,10 @@ const styles = {
     borderRadius: "20px",
     fontSize: "14px",
     fontWeight: "500",
-    backgroundColor: "#dcfce7",
-    color: "#166534",
   },
   statusDot: {
     width: "8px",
     height: "8px",
-    backgroundColor: "#22c55e",
     borderRadius: "50%",
     marginRight: "8px",
   },
@@ -524,10 +780,115 @@ const styles = {
     fontSize: "16px",
     fontWeight: "bold",
   },
-  singleButtonContainer: {
+  upgradeSection: {
+    marginTop: "24px",
+    padding: "20px",
+    backgroundColor: "#f8fafc",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+  },
+  upgradeSectionTitle: {
+    fontSize: "20px",
+    fontWeight: "600",
+    color: "#1f2937",
+    margin: "0 0 8px 0",
+    textAlign: "center",
+  },
+  upgradeSectionSubtitle: {
+    fontSize: "14px",
+    color: "#6b7280",
+    textAlign: "center",
+    margin: "0 0 20px 0",
+  },
+  upgradeGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "16px",
+  },
+  upgradePlanCard: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    padding: "20px",
+    transition: "all 0.3s ease",
+    cursor: "pointer",
+  },
+  upgradePlanHeader: {
+    marginBottom: "16px",
+  },
+  upgradePlanTier: {
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#1f2937",
+    margin: "0 0 8px 0",
+  },
+  upgradePlanPrice: {
     display: "flex",
-    justifyContent: "center",
-    paddingTop: "16px",
+    alignItems: "baseline",
+    marginBottom: "8px",
+  },
+  upgradePriceCurrency: {
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#6b7280",
+  },
+  upgradePriceAmount: {
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#1f2937",
+    margin: "0 4px",
+  },
+  upgradePriceCycle: {
+    fontSize: "14px",
+    color: "#6b7280",
+  },
+  upgradePlanPurpose: {
+    fontSize: "13px",
+    color: "#6b7280",
+    margin: 0,
+    lineHeight: "1.4",
+  },
+  upgradeFeaturesList: {
+    listStyle: "none",
+    padding: 0,
+    margin: "0 0 20px 0",
+  },
+  upgradeFeatureItem: {
+    fontSize: "13px",
+    color: "#4b5563",
+    marginBottom: "6px",
+    paddingLeft: "16px",
+    position: "relative",
+  },
+  upgradeFeatureMore: {
+    fontSize: "13px",
+    color: "#6b7280",
+    fontStyle: "italic",
+    marginBottom: "6px",
+    paddingLeft: "16px",
+  },
+  upgradePlanButton: {
+    width: "100%",
+    padding: "10px 16px",
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "14px",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.2s ease-in-out",
+  },
+  upgradeButton: {
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    fontWeight: "600",
+    padding: "12px 32px",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "16px",
+    transition: "all 0.2s ease-in-out",
   },
 };
 

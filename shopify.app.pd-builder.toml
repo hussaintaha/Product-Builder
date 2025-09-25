@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "9fe9e236b29b15d33a325930c27de38a"
+name = "pd-builder"
+application_url = "https://dimensional-annotated-forming-letter.trycloudflare.com"
+embedded = true
+handle = "pd-builder-5"
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-07"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_own_subscription_contracts,write_customers,write_own_subscription_contracts,write_products"
+
+[auth]
+redirect_urls = [
+  "https://dimensional-annotated-forming-letter.trycloudflare.com/auth/callback",
+  "https://dimensional-annotated-forming-letter.trycloudflare.com/auth/shopify/callback",
+  "https://dimensional-annotated-forming-letter.trycloudflare.com/api/auth/callback"
+]
+
+[app_proxy]
+url = "https://dimensional-annotated-forming-letter.trycloudflare.com"
+subpath = "public"
+prefix = "apps"
+
+[pos]
+embedded = false

@@ -1,27 +1,8 @@
-import Subscription from "../model/subscription.model";
-
 export const action = async ({ request }) => {
     console.log('cancel trigger');
     try {
 
         const payload = await request.json()
-        const { id: subscriptionId } = payload
-
-        const subscription = await Subscription.findOneAndUpdate(
-            { subscriptionId },
-            {
-                $set: {
-                    status: "CANCELLED",
-                    cancellationReason: "Cancelled by customer",
-                    cancelledOn: new Date(),
-                },
-            },
-            { new: true }
-        );
-
-        if (!subscription) {
-            return new Response(JSON.stringify({ success: false, error: "Subscription not found" }), { status: 404 });
-        }
 
         const replitResponse = await fetch(`https://e04e1f45-ddfa-4cfd-aa2c-825ae20bc005-00-4q1rcyndehbs.kirk.replit.dev/api/customers/${payload.customer_id}`, {
             method: 'PUT',
@@ -29,16 +10,17 @@ export const action = async ({ request }) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                subscription_status: String(payload?.status),
+                subscription_status: String(payload?.status).toLowerCase(),
             })
         })
 
         const data = await replitResponse.json()
 
-        const { success, message, data: replitData } = data
-        console.log('message: ', message);
+        const { success, data: replitData } = data
 
-        return new Response(JSON.stringify({ success: true, message: "Subscription has been cancelled." }), { status: 200 })
+        if (!success) return new Response(JSON.stringify({ success: false, message: "Failed to set subscription status to cancel." }), { status: 400 })
+
+        return new Response(JSON.stringify({ success: true, message: "Subscription has been cancelled.", data: replitData }), { status: 200 })
 
     } catch (error) {
         if (error instanceof Error) {

@@ -6,9 +6,8 @@ const processWebhook = async ({ payload }) => {
     const { id: customer_id, first_name, last_name, email } = payload;
 
     const now = new Date();
-    const isoDateTime = now.toISOString(); 
+    const isoDateTime = now.toISOString();
     const formattedDateTime = isoDateTime.replace('Z', '+00:00');
-    console.log('formattedDateTime: ', formattedDateTime);
 
     const newCustomer = {
       customer_id: String(customer_id),
@@ -27,10 +26,9 @@ const processWebhook = async ({ payload }) => {
       created_at: formattedDateTime,
       updated_at: null
     };
-    
-    console.log('newCustomer: ', JSON.stringify(newCustomer,null,2));
+
     const response = await fetch(
-      "https://e04e1f45-ddfa-4cfd-aa2c-825ae20bc005-00-4q1rcyndehbs.kirk.replit.dev/api/customers",
+      `${process.env.BASE_URL}`,
       {
         method: "POST",
         headers: {
@@ -41,7 +39,6 @@ const processWebhook = async ({ payload }) => {
     );
 
     const data = await response.json();
-    console.log('data: ', JSON.stringify(data, null, 2));
     const { success } = data;
 
     if (!success)

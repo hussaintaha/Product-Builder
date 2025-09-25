@@ -1,4 +1,81 @@
-const PricingPlan = () => {
+import React, { useEffect } from "react";
+
+const pricingPlans = [
+  {
+    tier: "Starter",
+    price: 19,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For first-time founders who just need help structuring their idea into a usable PRD.",
+    features: [
+      "Guided Problem Definition",
+      "AI powered root cause exploration",
+      "Customer Persona builder",
+      "Use Case Generator",
+      "PRD Generator",
+      "Access to Help and Glossary",
+      "Limited exports (PDF/Doc)",
+    ],
+    variant_id: "51921658839354",
+    product_id: "10031957508410",
+    group_id: "79129248058",
+  },
+  {
+    tier: "Growth",
+    price: 49,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For founders ready to take their PRD and plan their Go-To-Market (GTM) strategy.",
+    features: [
+      "Everything in Starter",
+      "GTM Strategy Builder",
+      "Target Market",
+      "Value Proposition",
+      "Positioning",
+      "Messaging",
+      "Pricing Strategy",
+      "Distribution Channels",
+      "Implementation Phases",
+      "Success Metrics",
+    ],
+    popular: true,
+    variant_id: "51921665753402",
+    product_id: "10031959441722",
+    group_id: "79129280826",
+  },
+  {
+    tier: "Pro",
+    price: 99,
+    currency: "USD",
+    billingCycle: "month",
+    purpose:
+      "For founders (and accelerators/VCs) who want to de-risk products with structured Problem–Solution Validation.",
+    features: [
+      "Everything in Growth",
+      "Problem Definition & Validation",
+      "Solution-Market fit Analysis",
+      "Customer Validation Summary",
+      "Competitive Gap Analysis",
+      "Risk Assessment",
+      "Validation Conclusion",
+      "Next Steps",
+    ],
+    variant_id: "51921671094586",
+    product_id: "10031960686906",
+    group_id: "79129313594",
+  },
+];
+
+const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
+
+   useEffect(() => {
+      if (customer_id) {
+        fetchSubscriptionHandler();
+      }
+    }, [customer_id, fetchSubscriptionHandler]);
+
   const fetchSellingPlan = async (product_id) => {
     try {
       const response = await fetch(
@@ -9,101 +86,486 @@ const PricingPlan = () => {
       );
 
       const responseData = await response.json();
-
       const { success, error, data } = responseData;
 
       if (!success && !data && error) {
         console.log(error);
+        return null;
       } else if (success && data && !error) {
         return data;
       }
     } catch (error) {
       console.log(error);
+      return null;
     }
   };
 
-  const plans = [
-    {
-      plan_name: "Basic",
-      plan_price: 19,
-      plan_features: [
-        "Limited access to essential features.",
-        "Small storage capacity.",
-        "Single-user access.",
-      ],
-      variant_id: "51898943668538",
-      product_id: "10026740842810",
-      group_id: "79123185978",
-      name: "Deliver every month",
-    },
-    {
-      plan_name: "Standard",
-      plan_price: 39,
-      plan_features: [
-        "Access to all essential features.",
-        "Moderate storage capacity.",
-        "Multiple user access (e.g., 5 users).",
-        "Priority email and chat support.",
-      ],
-      variant_id: "51898762592570",
-      product_id: "10026643554618",
-      group_id: "79123218746",
-      name: "Deliver every year",
-    },
-  ];
+  const handleAddToCart = async (plan) => {
+    console.log("Selected plan: ", plan);
+    
+    const sellingPlanData = await fetchSellingPlan(plan.product_id);
+    
+    if (!sellingPlanData) {
+      console.error("Failed to fetch selling plan data");
+      return;
+    }
 
-  const handleAddToCart = async ({ product_id, group_id, variant_Id}) => {
-    console.log("{ product_id, group_id, variant_Id }: ", {
-      product_id,
-      group_id,
-      variant_Id,
-    });
-    const { product, sellingPlans } = await fetchSellingPlan(product_id);
+    const { product, sellingPlans } = sellingPlanData;
     console.log("sellingPlans: ", sellingPlans);
 
     const filteredSellingPlan = sellingPlans.filter(
-      (e) => String(e?.groupId) === String(group_id),
+      (e) => String(e?.groupId) === String(plan.group_id),
     )[0];
 
     console.log(filteredSellingPlan, "filteredSellingPlan");
 
-    if (product && sellingPlans && fetchSellingPlan) {
-      const url = `/products/${product?.handle}?selling_plan=${filteredSellingPlan?.id}&variant=${variant_Id}`;
-      console.log("url: ", url);
+    if (product && filteredSellingPlan) {
+      const url = `/products/${product?.handle}?selling_plan=${filteredSellingPlan?.id}&variant=${plan.variant_id}`;
+      console.log("Redirecting to: ", url);
       window.location.href = url;
+    } else {
+      console.error("Missing product or selling plan data");
     }
   };
 
   return (
     <>
-      <div className="plan_container">
-        {plans?.map((plan) => (
-          <div className="card">
-            <div>
-              <h5>{plan?.plan_name}</h5>
-              <h3>{plan?.plan_price}</h3>
-              <ul>
-                {plan?.plan_features?.map((feature) => (
-                  <li>{feature}</li>
+      <style>{`
+        .pricing-container {
+          max-width: 120rem;
+          margin: 0 auto;
+          padding: 4rem 2.4rem 2rem;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .pricing-header {
+          text-align: center;
+          margin-bottom: 3rem;
+          flex-shrink: 0;
+        }
+
+        .logo {
+          width: 20rem;
+          height: auto;
+          margin-bottom: 2rem;
+        }
+
+        .pricing-title {
+          font-size: 3.2rem;
+          font-weight: 700;
+          color: #1a202c;
+          margin: 0 0 1rem 0;
+          letter-spacing: -0.025em;
+          line-height: 1.1;
+        }
+
+        .pricing-subtitle {
+          font-size: 1.4rem;
+          color: #718096;
+          margin: 0;
+          font-weight: 400;
+          max-width: 70rem;
+          margin-left: auto;
+          margin-right: auto;
+          line-height: 1.4;
+        }
+
+        .pricing-grid {
+          display: grid;
+          gap: 2rem;
+          align-items: stretch;
+          flex: 1;
+        }
+
+        /* Responsive grid: >992px = 3 columns, 600-992px = 2 columns, <600px = 1 column */
+        @media (min-width: 99.2rem) {
+          .pricing-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
+        @media (min-width: 60rem) and (max-width: 99.1rem) {
+          .pricing-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        @media (max-width: 59.9rem) {
+          .pricing-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .pricing-card {
+          background: white;
+          border-radius: 1.6rem;
+          padding: 2.4rem 2rem;
+          position: relative;
+          box-shadow: 0 0.4rem 2rem rgba(0, 0, 0, 0.08);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border: 0.1rem solid #e2e8f0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .pricing-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 0.4rem;
+          background: linear-gradient(90deg, #667eea, #764ba2);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .pricing-card:hover {
+          transform: translateY(-0.8rem);
+          box-shadow: 0 1.6rem 3.2rem rgba(0, 0, 0, 0.12);
+          border-color: #cbd5e0;
+        }
+
+        .pricing-card:hover::before {
+          opacity: 1;
+        }
+
+        .pricing-card.popular {
+          transform: scale(1.02);
+          border: 0.2rem solid #667eea;
+          box-shadow: 0 1.6rem 3.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        .pricing-card.popular::before {
+          opacity: 1;
+          height: 0.6rem;
+        }
+
+        .popular-badge {
+          position: absolute;
+          top: -0.1rem;
+          right: 2rem;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 0.6rem 1.6rem;
+          border-radius: 0 0 0.8rem 0.8rem;
+          font-size: 1.4rem;
+          font-weight: 600;
+          letter-spacing: 0.025em;
+          text-transform: uppercase;
+        }
+
+        .plan-header {
+          margin-bottom: 2rem;
+          flex-shrink: 0;
+        }
+
+        .plan-tier {
+          font-size: 2.4rem;
+          font-weight: 700;
+          color: #1a202c;
+          margin: 0 0 0.8rem 0;
+          letter-spacing: -0.025em;
+        }
+
+        .plan-price {
+          display: flex;
+          align-items: baseline;
+          margin-bottom: 1rem;
+        }
+
+        .price-amount {
+          font-size: 3.6rem;
+          font-weight: 800;
+          color: #2d3748;
+          line-height: 1;
+          letter-spacing: -0.05em;
+        }
+
+        .price-currency {
+          font-size: 1.4rem;
+          font-weight: 600;
+          color: #718096;
+          margin-right: 0.4rem;
+        }
+
+        .price-cycle {
+          font-size: 1.4rem;
+          color: #718096;
+          margin-left: 0.4rem;
+          font-weight: 500;
+        }
+
+        .plan-purpose {
+          font-size: 1.4rem;
+          color: #4a5568;
+          margin: 0;
+          font-weight: 400;
+        }
+
+        .features-list {
+          list-style: none;
+          padding: 0;
+          margin: 1.6rem 0;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+        }
+
+        .feature-item {
+          display: flex;
+          align-items: flex-start;
+          margin-bottom: 1.2rem;
+          font-size: 1.4rem;
+          color: #4a5568;
+        }
+
+        .feature-item::before {
+          content: '✓';
+          color: #48bb78;
+          font-weight: 700;
+          font-size: 1.2rem;
+          margin-right: 1rem;
+          flex-shrink: 0;
+          margin-top: 0.1rem;
+        }
+
+        .cta-button {
+          width: 100%;
+          padding: 1.2rem 2rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 0.8rem;
+          font-size: 1.6rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          letter-spacing: 0.025em;
+          position: relative;
+          overflow: hidden;
+          margin-top: auto;
+          flex-shrink: 0;
+        }
+
+        .cta-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.5s ease;
+        }
+
+        .cta-button:hover {
+          transform: translateY(-0.2rem);
+          box-shadow: 0 1.2rem 2.4rem rgba(102, 126, 234, 0.4);
+        }
+
+        .cta-button:hover::before {
+          left: 100%;
+        }
+
+        .cta-button:active {
+          transform: translateY(0);
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 76.8rem) {
+          .pricing-container {
+            padding: 3rem 1.6rem 2rem;
+          }
+
+          .pricing-title {
+            font-size: 2.8rem;
+          }
+
+          .pricing-subtitle {
+            font-size: 1.3rem;
+          }
+
+          .logo {
+            width: 20rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .pricing-header {
+            margin-bottom: 2rem;
+          }
+
+          .pricing-grid {
+            gap: 1.6rem;
+          }
+
+          .pricing-card {
+            padding: 2rem 1.6rem;
+          }
+
+          .pricing-card.popular {
+            transform: none;
+          }
+
+          .price-amount {
+            font-size: 2.8rem;
+          }
+
+          .plan-tier {
+            font-size: 1.6rem;
+          }
+
+          .plan-purpose {
+            font-size: 1.1rem;
+          }
+
+          .feature-item {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+          }
+
+          .cta-button {
+            font-size: 1.2rem;
+            padding: 1rem 1.6rem;
+          }
+        }
+
+        @media (max-width: 48rem) {
+          .pricing-container {
+            padding: 2rem 1.6rem;
+          }
+
+          .pricing-title {
+            font-size: 2.4rem;
+          }
+
+          .pricing-subtitle {
+            font-size: 1.2rem;
+          }
+
+          .logo {
+            width: 20rem;
+            margin-bottom: 1rem;
+          }
+
+          .pricing-header {
+            margin-bottom: 1.5rem;
+          }
+
+          .pricing-card {
+            padding: 1.6rem 1.2rem;
+          }
+
+          .popular-badge {
+            right: 1.2rem;
+            padding: 0.5rem 1.2rem;
+            font-size: 0.9rem;
+          }
+
+          .plan-tier {
+            font-size: 2.4rem;
+          }
+
+          .price-amount {
+            font-size: 2.4rem;
+          }
+
+          .price-currency {
+            font-size: 1.4rem;
+          }
+
+          .price-cycle {
+            font-size: 1.4rem;
+          }
+
+          .plan-purpose {
+            font-size: 1.4rem;
+          }
+
+          .feature-item {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+          }
+
+          .feature-item::before {
+            font-size: 1.6rem;
+            margin-right: 0.8rem;
+          }
+
+          .cta-button {
+            font-size: 1.6rem;
+            padding: 1rem 1.4rem;
+          }
+
+          .features-list {
+            margin: 1.2rem 0;
+          }
+        }
+
+        @media (max-width: 59.9rem) and (orientation: landscape) {
+          .pricing-container {
+            height: auto;
+            min-height: 100vh;
+          }
+        }
+      `}</style>
+
+      <div className="pricing-container">
+        <div className="pricing-header">
+          <img
+            src="https://cdn.shopify.com/s/files/1/0965/9544/4026/files/pd-builder-logo.png?v=1758542981"
+            alt="PD Builder Logo"
+            className="logo"
+          />
+          <h1 className="pricing-title">Choose Your Plan</h1>
+          <p className="pricing-subtitle">
+            Transform your ideas into market-ready products with our
+            comprehensive suite of tools
+          </p>
+        </div>
+
+        <div className="pricing-grid">
+          {pricingPlans.map((plan) => (
+            <div
+              key={plan.tier}
+              className={`pricing-card ${plan.popular ? "popular" : ""}`}
+            >
+              {plan.popular && (
+                <div className="popular-badge">Most Popular</div>
+              )}
+
+              <div className="plan-header">
+                <h3 className="plan-tier">{plan.tier}</h3>
+                <div className="plan-price">
+                  <span className="price-currency">$</span>
+                  <span className="price-amount">{plan.price}</span>
+                  <span className="price-cycle">/{plan.billingCycle}</span>
+                </div>
+                <p className="plan-purpose">{plan.purpose}</p>
+              </div>
+
+              <ul className="features-list">
+                {plan.features.map((feature, featureIndex) => (
+                  <li key={featureIndex} className="feature-item">
+                    {feature}
+                  </li>
                 ))}
               </ul>
-            </div>
-            <div>
+
               <button
-                onClick={() =>
-                  handleAddToCart({
-                    product_id: plan?.product_id,
-                    group_id: plan?.group_id,
-                    variant_Id: plan?.variant_id,
-                    name: plan?.name
-                  })
-                }
+                className="cta-button"
+                onClick={() => handleAddToCart(plan)}
               >
-                Subscribe
+                Get Started
               </button>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </>
   );

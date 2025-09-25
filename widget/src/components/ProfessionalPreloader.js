@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React from 'react';
 
 const PreloaderStyles = `
   .preloader-fullscreen {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #ffffff;
-    z-index: 99;
+    z-index: 9999;
   }
 
   .preloader-card {
@@ -20,7 +20,7 @@ const PreloaderStyles = `
     backdrop-filter: blur(20px);
     border: 1px solid rgba(226, 232, 240, 0.3);
     border-radius: 24px;
-    padding: 3rem 2.5rem;
+    padding: 4rem 3rem;
     text-align: center;
     box-shadow: 
       0 25px 50px -12px rgba(0, 0, 0, 0.08),
@@ -127,8 +127,14 @@ const PreloaderStyles = `
   }
 
   @keyframes pulse-center {
-    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.7; }
+    0%, 100% { 
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    50% { 
+      transform: translate(-50%, -50%) scale(1.5);
+      opacity: 0.7;
+    }
   }
 
   .loading-content {
@@ -136,7 +142,7 @@ const PreloaderStyles = `
   }
 
   .loading-title {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 600;
     margin-bottom: 0.5rem;
     background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
@@ -147,13 +153,16 @@ const PreloaderStyles = `
   }
 
   .loading-subtitle {
-    font-size: 14px;
+    font-size: 16px;
     color: rgba(71, 85, 105, 0.7);
-    margin-bottom: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 2rem;
+    line-height: 1.5;
   }
 
   .loading-progress {
-    width: 180px;
+    position: relative;
+    width: 200px;
     height: 4px;
     background: rgba(226, 232, 240, 0.4);
     border-radius: 2px;
@@ -172,22 +181,133 @@ const PreloaderStyles = `
   }
 
   @keyframes progress-wave {
-    0% { background-position: 0% 50%; width: 20%; }
-    50% { background-position: 100% 50%; width: 80%; }
-    100% { background-position: 200% 50%; width: 95%; }
+    0% {
+      background-position: 0% 50%;
+      width: 20%;
+    }
+    50% {
+      background-position: 100% 50%;
+      width: 80%;
+    }
+    100% {
+      background-position: 200% 50%;
+      width: 95%;
+    }
+  }
+
+  .loading-dots {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(71, 85, 105, 0.6);
+    border-radius: 50%;
+    animation: dot-bounce 1.4s ease-in-out infinite both;
+  }
+
+  .dot:nth-child(1) { animation-delay: -0.32s; }
+  .dot:nth-child(2) { animation-delay: -0.16s; }
+  .dot:nth-child(3) { animation-delay: 0s; }
+
+  @keyframes dot-bounce {
+    0%, 80%, 100% {
+      transform: translateY(0) scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: translateY(-8px) scale(1.2);
+      opacity: 1;
+    }
+  }
+
+  .brand-logo {
+    margin-bottom: 2rem;
+    animation: logo-entrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 0.2s;
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  .brand-logo svg {
+    height: 40px;
+    width: auto;
+  }
+
+  @keyframes logo-entrance {
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .preloader-card {
+      padding: 3rem 2rem;
+      border-radius: 20px;
+      margin: 1rem;
+    }
+
+    .loading-spinner {
+      width: 70px;
+      height: 70px;
+      margin-bottom: 1.5rem;
+    }
+
+    .spinner-orbit:nth-child(1) {
+      width: 70px;
+      height: 70px;
+    }
+
+    .spinner-orbit:nth-child(2) {
+      width: 52px;
+      height: 52px;
+      top: 9px;
+      left: 9px;
+    }
+
+    .spinner-orbit:nth-child(3) {
+      width: 34px;
+      height: 34px;
+      top: 18px;
+      left: 18px;
+    }
+
+    .loading-title {
+      font-size: 20px;
+    }
+
+    .loading-subtitle {
+      font-size: 14px;
+      margin-bottom: 1.5rem;
+    }
+
+    .loading-progress {
+      width: 160px;
+      height: 3px;
+    }
+  }
+
+  @media (max-width: 320px) {
+    .preloader-card {
+      padding: 2.5rem 1.5rem;
+    }
   }
 `;
 
-const WidgetPreloader = () => (
-  <>
-    <style>{PreloaderStyles}</style>
+const ProfessionalPreloader = () => {
+  return (
     <div className="preloader-fullscreen">
+      <style>{PreloaderStyles}</style>
       <div className="preloader-card">
-        <div className="brand-logo" style={{ marginBottom: "1.5rem" }}>
+        <div className="brand-logo">
           <img
             src="https://cdn.shopify.com/s/files/1/0965/9544/4026/files/pd-builder-logo.png?v=1758542981"
             alt="logo"
-            style={{ maxWidth: "100%", height: "auto" }}
+            style={{ maxWidth: '100%', height: 'auto' }}
           />
         </div>
 
@@ -199,44 +319,24 @@ const WidgetPreloader = () => (
         </div>
 
         <div className="loading-content">
-          <div className="loading-title">Loading PDBuilder...</div>
+          <div className="loading-title">
+            Loading
+            <span className="loading-dots">
+              <span className="dot"></span>
+              <span className="dot"></span>
+              <span className="dot"></span>
+            </span>
+          </div>
+
           <div className="loading-subtitle">Preparing your experience</div>
+
           <div className="loading-progress">
             <div className="progress-bar"></div>
           </div>
         </div>
       </div>
     </div>
-  </>
-);
-
-const Widget = ({ customer_id }) => {
-  const [isLoading, setIsLoading] = useState(true);
-
-  const handleIframeLoad = () => {
-    setTimeout(() => setIsLoading(false), 500);
-  };
-
-  return (
-    <div style={{ height: "99vh", position: "relative", overflow: "hidden" }}>
-      {isLoading && <WidgetPreloader />}
-      <iframe
-        name="myiFrame"
-        width="100%"
-        height="100%"
-        src={`https://e04e1f45-ddfa-4cfd-aa2c-825ae20bc005-00-4q1rcyndehbs.kirk.replit.dev/?customer_id=${customer_id}`}
-        scrolling="no"
-        marginWidth="0"
-        marginHeight="0"
-        style={{
-          border: "0px none #ffffff",
-          opacity: isLoading ? 0 : 1,
-          transition: "opacity 0.4s ease-in-out",
-        }}
-        onLoad={handleIframeLoad}
-      />
-    </div>
   );
 };
 
-export default Widget;
+export default ProfessionalPreloader;
