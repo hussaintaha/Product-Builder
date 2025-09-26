@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 
 const pricingPlans = [
   {
@@ -68,13 +68,8 @@ const pricingPlans = [
   },
 ];
 
-const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
-
-   useEffect(() => {
-      if (customer_id) {
-        fetchSubscriptionHandler();
-      }
-    }, [customer_id, fetchSubscriptionHandler]);
+const PricingPlan = () => {
+  const [localLoading, setLocalLoading] = useState(false);
 
   const fetchSellingPlan = async (product_id) => {
     try {
@@ -101,12 +96,14 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
   };
 
   const handleAddToCart = async (plan) => {
+    setLocalLoading(true);
     console.log("Selected plan: ", plan);
     
     const sellingPlanData = await fetchSellingPlan(plan.product_id);
     
     if (!sellingPlanData) {
       console.error("Failed to fetch selling plan data");
+      setLocalLoading(false);
       return;
     }
 
@@ -125,6 +122,7 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
       window.location.href = url;
     } else {
       console.error("Missing product or selling plan data");
+      setLocalLoading(false);
     }
   };
 
@@ -170,6 +168,45 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
           margin-left: auto;
           margin-right: auto;
           line-height: 1.4;
+        }
+
+        .subscription-status {
+          text-align: center;
+          margin: 1rem 0;
+          padding: 1rem;
+          border-radius: 0.8rem;
+          font-size: 1.4rem;
+          font-weight: 500;
+        }
+
+        .status-loading {
+          background: #ebf8ff;
+          color: #2b6cb0;
+          border: 1px solid #bee3f8;
+        }
+
+        .status-success {
+          background: #f0fff4;
+          color: #276749;
+          border: 1px solid #9ae6b4;
+        }
+
+        .status-warning {
+          background: #fffaf0;
+          color: #c05621;
+          border: 1px solid #fbd38d;
+        }
+
+        .status-error {
+          background: #fed7d7;
+          color: #c53030;
+          border: 1px solid #feb2b2;
+        }
+
+        .status-info {
+          background: #f7fafc;
+          color: #4a5568;
+          border: 1px solid #e2e8f0;
         }
 
         .pricing-grid {
@@ -377,6 +414,17 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
           transform: translateY(0);
         }
 
+        .cta-button:disabled {
+          background: #a0aec0;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .cta-button:disabled:hover::before {
+          left: -100%;
+        }
+
         /* Mobile responsive adjustments */
         @media (max-width: 76.8rem) {
           .pricing-container {
@@ -432,6 +480,11 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
           .cta-button {
             font-size: 1.2rem;
             padding: 1rem 1.6rem;
+          }
+
+          .subscription-status {
+            font-size: 1.2rem;
+            padding: 0.8rem;
           }
         }
 
@@ -505,6 +558,11 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
           .features-list {
             margin: 1.2rem 0;
           }
+
+          .subscription-status {
+            font-size: 1.1rem;
+            padding: 0.6rem;
+          }
         }
 
         @media (max-width: 59.9rem) and (orientation: landscape) {
@@ -560,8 +618,9 @@ const PricingPlan = ({customer_id, fetchSubscriptionHandler}) => {
               <button
                 className="cta-button"
                 onClick={() => handleAddToCart(plan)}
+                disabled={localLoading}
               >
-                Get Started
+                {localLoading ? "Loading..." : "Get Started"}
               </button>
             </div>
           ))}

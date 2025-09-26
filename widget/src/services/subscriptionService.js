@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, PLAN_TYPES, SUBSCRIPTION_STATUS } from '../constants/subscription';
+import { API_ENDPOINTS, PLAN_TYPES, SUBSCRIPTION_STATUS } from '../constant/subscription';
 
 class SubscriptionService {
   async checkSubscriptionStatus(customerId) {

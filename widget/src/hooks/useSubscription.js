@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { API_ENDPOINTS, PLAN_TYPES, SUBSCRIPTION_STATUS, POLLING_INTERVALS, MAX_POLLING_ATTEMPTS } from '../constants/subscription';
+import { API_ENDPOINTS, PLAN_TYPES, SUBSCRIPTION_STATUS, POLLING_INTERVALS, MAX_POLLING_ATTEMPTS } from '../constant/subscription';
 
 export const useSubscription = (customerId) => {
   const [subscription, setSubscription] = useState(null);
@@ -8,10 +8,10 @@ export const useSubscription = (customerId) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-
   const pollingIntervalRef = useRef(null);
   const pollingAttemptsRef = useRef(0);
   const maxAttemptsReachedRef = useRef(false);
+  const statusConfirmedRef = useRef(false); // NEW: Track if status is confirmed
 
   const hasRemainingAttempts = useCallback((subscriptionData) => {
     if (!subscriptionData) return false;
@@ -49,19 +49,28 @@ export const useSubscription = (customerId) => {
     return false;
   }, []);
 
-  const determinePollingInterval = useCallback((subscriptionData) => {
-    if (!subscriptionData) return POLLING_INTERVALS.ERROR;
+  const shouldContinuePolling = useCallback((subscriptionData) => {
+    // If status is already confirmed, don't continue polling
+    if (statusConfirmedRef.current) return false;
     
-    if (isSubscriptionExpired(subscriptionData)) {
-      return POLLING_INTERVALS.EXPIRED;
+    // If we have valid subscription data, we can confirm status
+    if (subscriptionData && subscriptionData.subscription_status) {
+      // For active subscriptions with remaining attempts, we can stop polling
+      if (subscriptionData.subscription_status === SUBSCRIPTION_STATUS.ACTIVE && 
+          hasRemainingAttempts(subscriptionData)) {
+        return false;
+      }
+      
+      // For expired or invalid subscriptions, we can also stop polling
+      if (isSubscriptionExpired(subscriptionData) || 
+          subscriptionData.subscription_status !== SUBSCRIPTION_STATUS.ACTIVE) {
+        return false;
+      }
     }
     
-    if (hasRemainingAttempts(subscriptionData)) {
-      return POLLING_INTERVALS.ACTIVE;
-    }
-    
-    return POLLING_INTERVALS.ERROR;
-  }, [isSubscriptionExpired, hasRemainingAttempts]);
+    // Continue polling if we don't have definitive status yet
+    return true;
+  }, [hasRemainingAttempts, isSubscriptionExpired]);
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -71,15 +80,15 @@ export const useSubscription = (customerId) => {
     pollingAttemptsRef.current = 0;
   }, []);
 
-
   const resetPollingAttempts = useCallback(() => {
     maxAttemptsReachedRef.current = false;
     pollingAttemptsRef.current = 0;
+    statusConfirmedRef.current = false; // Reset status confirmation
   }, []);
 
   const startPolling = useCallback((interval, fetchFunction) => {
-    if (maxAttemptsReachedRef.current) {
-      console.log('Polling blocked: maximum attempts already reached');
+    if (maxAttemptsReachedRef.current || statusConfirmedRef.current) {
+      console.log('Polling blocked: maximum attempts reached or status confirmed');
       return;
     }
     
@@ -87,11 +96,11 @@ export const useSubscription = (customerId) => {
     
     pollingIntervalRef.current = setInterval(() => {
       pollingAttemptsRef.current += 1;
-      
 
+      // Stop if max attempts reached
       if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
         stopPolling();
-        maxAttemptsReachedRef.current = true; 
+        maxAttemptsReachedRef.current = true;
         console.log('Max polling attempts reached - polling stopped permanently');
         return;
       }
@@ -101,9 +110,8 @@ export const useSubscription = (customerId) => {
   }, [stopPolling]);
 
   const fetchSubscription = useCallback(async () => {
-
-    if (maxAttemptsReachedRef.current) {
-      console.log('Fetch blocked: maximum polling attempts reached');
+    if (maxAttemptsReachedRef.current || statusConfirmedRef.current) {
+      console.log('Fetch blocked: maximum polling attempts reached or status confirmed');
       return;
     }
 
@@ -134,14 +142,19 @@ export const useSubscription = (customerId) => {
         const shouldShowWidget = hasRemainingAttempts(subscriptionData);
         setShowWidget(shouldShowWidget);
         
-
-        const pollingInterval = determinePollingInterval(subscriptionData);
+        // Check if we should continue polling or stop
+        const continuePolling = shouldContinuePolling(subscriptionData);
         
-
-        if (subscriptionData.subscription_status && !maxAttemptsReachedRef.current) {
+        if (!continuePolling) {
+          // Status is confirmed - stop polling permanently
+          statusConfirmedRef.current = true;
+          stopPolling();
+          console.log('Subscription status confirmed - polling stopped');
+        } else {
+          // Continue polling with appropriate interval
+          const pollingInterval = determinePollingInterval(subscriptionData);
           startPolling(pollingInterval, fetchSubscription);
         }
-        
 
         if (isSubscriptionExpired(subscriptionData)) {
           toast.error(
@@ -151,33 +164,49 @@ export const useSubscription = (customerId) => {
       } else {
         setShowWidget(false);
         setSubscription(null);
+        
+        // If we get an empty response but have reached max attempts, stop
+        if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS - 5) { // Stop a bit earlier for empty responses
+          statusConfirmedRef.current = true;
+          stopPolling();
+        }
       }
     } catch (error) {
       console.error('Subscription fetch error:', error);
       setError(error.message);
       setShowWidget(false);
       
-
-      if (!maxAttemptsReachedRef.current) {
+      // Only continue polling if we haven't confirmed status and haven't reached max attempts
+      if (!statusConfirmedRef.current && !maxAttemptsReachedRef.current) {
         startPolling(POLLING_INTERVALS.ERROR, fetchSubscription);
       }
     } finally {
       setLoading(false);
     }
-  }, [customerId, hasRemainingAttempts, isSubscriptionExpired, determinePollingInterval, startPolling]);
+  }, [customerId, hasRemainingAttempts, isSubscriptionExpired, shouldContinuePolling, startPolling, stopPolling]);
 
+  const determinePollingInterval = useCallback((subscriptionData) => {
+    if (!subscriptionData) return POLLING_INTERVALS.ERROR;
+    
+    if (isSubscriptionExpired(subscriptionData)) {
+      return POLLING_INTERVALS.EXPIRED;
+    }
+    
+    if (hasRemainingAttempts(subscriptionData)) {
+      return POLLING_INTERVALS.ACTIVE;
+    }
+    
+    return POLLING_INTERVALS.ERROR;
+  }, [isSubscriptionExpired, hasRemainingAttempts]);
 
   const initializePolling = useCallback(() => {
     if (!customerId) return;
     
-
     resetPollingAttempts();
-    stopPolling(); 
+    stopPolling();
     
-
     startPolling(POLLING_INTERVALS.INITIAL, fetchSubscription);
   }, [customerId, stopPolling, startPolling, fetchSubscription, resetPollingAttempts]);
-
 
   useEffect(() => {
     return () => {
@@ -193,9 +222,10 @@ export const useSubscription = (customerId) => {
     fetchSubscription,
     initializePolling,
     stopPolling,
-    resetPollingAttempts, 
+    resetPollingAttempts,
     hasRemainingAttempts: () => hasRemainingAttempts(subscription),
     isExpired: () => isSubscriptionExpired(subscription),
-    maxAttemptsReached: () => maxAttemptsReachedRef.current 
+    maxAttemptsReached: () => maxAttemptsReachedRef.current,
+    statusConfirmed: () => statusConfirmedRef.current // NEW: Expose status confirmation
   };
 };

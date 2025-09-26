@@ -22,14 +22,14 @@ export const SELECTORS = {
   WIDGET_ROOT: '#WIDGET'
 };
 
-// Smart polling intervals
+
 export const POLLING_INTERVALS = {
-  INITIAL: 500,        // Fast polling for initial load
-  ACTIVE: 30000,       // 30 seconds for active subscription
-  EXPIRED: 60000,      // 1 minute for expired subscription
-  ERROR: 10000         // 10 seconds on error
+  INITIAL: 500,       
+  ACTIVE: 30000,      
+  EXPIRED: 60000,     
+  ERROR: 10000         
 };
 
-export const MAX_POLLING_ATTEMPTS = 20; // Limit total polling attempts
+export const MAX_POLLING_ATTEMPTS = 20; 
 
 export const POLLING_INTERVAL = 500;

@@ -71,7 +71,6 @@ const pricingPlans = [
 ];
 
 const Subscriptions = ({ customer }) => {
-  console.log("klkl");
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [subscription, setSubscription] = useState(null);

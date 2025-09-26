@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SELECTORS } from '../constants/subscription';
+import { SELECTORS } from '../constant/subscription';
 
 export const useCustomerData = () => {
   const [customerData, setCustomerData] = useState(null);

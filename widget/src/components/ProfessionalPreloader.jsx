@@ -1,5 +1,3 @@
-import React from 'react';
-
 const PreloaderStyles = `
   .preloader-fullscreen {
     position: fixed;
@@ -298,7 +296,7 @@ const PreloaderStyles = `
   }
 `;
 
-const ProfessionalPreloader = () => {
+export default function ProfessionalPreloader() {
   return (
     <div className="preloader-fullscreen">
       <style>{PreloaderStyles}</style>
@@ -307,7 +305,7 @@ const ProfessionalPreloader = () => {
           <img
             src="https://cdn.shopify.com/s/files/1/0965/9544/4026/files/pd-builder-logo.png?v=1758542981"
             alt="logo"
-            style={{ maxWidth: '100%', height: 'auto' }}
+            style={{ maxWidth: "100%", height: "auto" }}
           />
         </div>
 
@@ -337,6 +335,4 @@ const ProfessionalPreloader = () => {
       </div>
     </div>
   );
-};
-
-export default ProfessionalPreloader;
+}
