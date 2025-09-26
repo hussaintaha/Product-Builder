@@ -190,6 +190,10 @@ const Subscriptions = ({ customer }) => {
       } else if (success && !error && message) {
         toast.success(message);
       }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error(`Error ${action} subscription:`, error);
       toast.error(`Failed to ${action} subscription. Please try again.`);

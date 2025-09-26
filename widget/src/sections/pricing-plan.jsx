@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { User } from "lucide-react";
 
 const pricingPlans = [
   {
@@ -136,6 +137,74 @@ const PricingPlan = () => {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
           display: flex;
           flex-direction: column;
+        }
+
+        .account-button {
+          position: fixed;
+          top: 2rem;
+          right: 2rem;
+          z-index: 1000;
+          background: white;
+          border: 0.1rem solid #e2e8f0;
+          border-radius: 0.8rem;
+          padding: 1rem;
+          box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.1);
+          transition: all 0.3s ease;
+          cursor: pointer;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .account-button:hover {
+          background: #f7fafc;
+          box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.15);
+          transform: translateY(-0.1rem);
+        }
+
+        .account-button svg {
+          color: #4a5568;
+          transition: color 0.3s ease;
+        }
+
+        .account-button:hover svg {
+          color: #2d3748;
+        }
+
+        .info-banner {
+          background: linear-gradient(135deg, #e6fffa 0%, #f0fff4 100%);
+          border: 0.1rem solid #9ae6b4;
+          border-radius: 0.8rem;
+          padding: 1.2rem 2rem;
+          margin: 0 0 2rem 0;
+          text-align: center;
+          font-size: 1.4rem;
+          color: #276749;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .info-banner::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+
+        .info-banner-icon {
+          display: inline-block;
+          margin-right: 0.8rem;
+          font-size: 1.6rem;
         }
 
         .pricing-header {
@@ -431,6 +500,17 @@ const PricingPlan = () => {
             padding: 3rem 1.6rem 2rem;
           }
 
+          .account-button {
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 0.8rem;
+          }
+
+          .info-banner {
+            padding: 1rem 1.5rem;
+            font-size: 1.3rem;
+          }
+
           .pricing-title {
             font-size: 2.8rem;
           }
@@ -491,6 +571,18 @@ const PricingPlan = () => {
         @media (max-width: 48rem) {
           .pricing-container {
             padding: 2rem 1.6rem;
+          }
+
+          .account-button {
+            top: 1rem;
+            right: 1rem;
+            padding: 0.6rem;
+          }
+
+          .info-banner {
+            padding: 0.8rem 1.2rem;
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
           }
 
           .pricing-title {
@@ -573,6 +665,11 @@ const PricingPlan = () => {
         }
       `}</style>
 
+      {/* Account Button */}
+      <a href="/account" className="account-button">
+        <User size={20} />
+      </a>
+
       <div className="pricing-container">
         <div className="pricing-header">
           <img
@@ -585,6 +682,12 @@ const PricingPlan = () => {
             Transform your ideas into market-ready products with our
             comprehensive suite of tools
           </p>
+        </div>
+
+        {/* Info Banner */}
+        <div className="info-banner">
+          <span className="info-banner-icon">ℹ️</span>
+          To upgrade your plan, you'll need to cancel your existing subscription first.
         </div>
 
         <div className="pricing-grid">
