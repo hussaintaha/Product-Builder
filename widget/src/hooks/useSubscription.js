@@ -17,7 +17,8 @@ export const useSubscription = (customerId) => {
   const pollingIntervalRef = useRef(null);
   const pollingAttemptsRef = useRef(0);
   const maxAttemptsReachedRef = useRef(false);
-  const statusConfirmedRef = useRef(false); // NEW: Track if status is confirmed
+  const statusConfirmedRef = useRef(false); 
+  const toastShownRef = useRef(false);
 
   const hasRemainingAttempts = useCallback((subscriptionData) => {
     if (!subscriptionData) return false;
@@ -109,6 +110,7 @@ export const useSubscription = (customerId) => {
     maxAttemptsReachedRef.current = false;
     pollingAttemptsRef.current = 0;
     statusConfirmedRef.current = false; // Reset status confirmation
+    toastShownRef.current = false;
   }, []);
 
   const startPolling = useCallback(
@@ -129,6 +131,12 @@ export const useSubscription = (customerId) => {
         if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
           stopPolling();
           maxAttemptsReachedRef.current = true;
+
+          if (!toastShownRef.current) {
+            toast.error("Unable to verify subscription status. Please try again later.");
+            toastShownRef.current = true; // Mark toast as shown
+          }
+
           console.log(
             "Max polling attempts reached - polling stopped permanently",
           );
