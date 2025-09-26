@@ -5,13 +5,13 @@ export const action = async ({ request }) => {
 
         const payload = await request.json()
 
-        const replitResponse = await fetch(`https://e04e1f45-ddfa-4cfd-aa2c-825ae20bc005-00-4q1rcyndehbs.kirk.replit.dev/api/customers/${payload.customer_id}`, {
+        const replitResponse = await fetch(`${process.env.BASE_URL}/${payload.customer_id}`, {
             method: 'PUT',
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                subscription_status: String(payload?.status).toLowerCase(),
+                subscriptionStatus: String(payload?.status).toLowerCase(),
             })
         })
 

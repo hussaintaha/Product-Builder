@@ -224,7 +224,7 @@ const Widget = ({ customer_id }) => {
         name="myiFrame"
         width="100%"
         height="100%"
-        src={`https://e04e1f45-ddfa-4cfd-aa2c-825ae20bc005-00-4q1rcyndehbs.kirk.replit.dev/?customer_id=${customer_id}`}
+        src={`https://60d5a5f6-f534-45d7-b843-2cec30414325-00-1imm295huve0s.picard.replit.dev/?customer_id=${customer_id}`}
         scrolling="no"
         marginWidth="0"
         marginHeight="0"

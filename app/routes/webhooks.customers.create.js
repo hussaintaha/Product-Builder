@@ -5,27 +5,21 @@ const processWebhook = async ({ payload }) => {
   try {
     const { id: customer_id, first_name, last_name, email } = payload;
 
-    const now = new Date();
-    const isoDateTime = now.toISOString();
-    const formattedDateTime = isoDateTime.replace('Z', '+00:00');
-
     const newCustomer = {
-      customer_id: String(customer_id),
-      first_name: String(first_name),
-      last_name: String(last_name),
+      customerId: String(customer_id),
+      firstName: String(first_name),
+      lastName: String(last_name),
       email: String(email),
-      subscription_id: "",
-      subscription_status: "active",
-      subscription_interval: "",
-      plan_name: "Free",
-      subscribe_plan_name: "Free",
-      subscription_plan_price: 0.00,
-      customer_ip_address: null,
-      actual_attempts: 3,
+      subscriptionId: "",
+      subscriptionStatus: "active",
+      subscriptionInterval: "",
+      planName: "Free",
+      subscribePlanName: "Free",
+      subscriptionPlanPrice: 0,
+      actualAttempts: 3,
       used_attempt: 0,
-      created_at: formattedDateTime,
-      updated_at: null
     };
+
 
     const response = await fetch(
       `${process.env.BASE_URL}`,
@@ -39,6 +33,7 @@ const processWebhook = async ({ payload }) => {
     );
 
     const data = await response.json();
+    console.log('data: ', JSON.stringify(data, null, 2));
     const { success } = data;
 
     if (!success)
