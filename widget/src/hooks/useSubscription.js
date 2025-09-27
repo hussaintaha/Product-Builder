@@ -1,3 +1,4 @@
+// useSubscription.js
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "react-toastify";
 import {
@@ -11,7 +12,7 @@ import {
 export const useSubscription = (customerId) => {
   const [subscription, setSubscription] = useState(null);
   const [showWidget, setShowWidget] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const pollingIntervalRef = useRef(null);
@@ -19,7 +20,13 @@ export const useSubscription = (customerId) => {
   const maxAttemptsReachedRef = useRef(false);
   const statusConfirmedRef = useRef(false); 
   const toastShownRef = useRef(false);
+  const initializedRef = useRef(false);
 
+  // Temporary storage for subscription data during polling
+  const tempSubscriptionRef = useRef(null);
+  const tempShowWidgetRef = useRef(false);
+
+  // Check if subscription has remaining attempts
   const hasRemainingAttempts = useCallback((subscriptionData) => {
     if (!subscriptionData) return false;
 
@@ -43,6 +50,7 @@ export const useSubscription = (customerId) => {
     return true;
   }, []);
 
+  // Check if subscription is expired
   const isSubscriptionExpired = useCallback((subscriptionData) => {
     if (!subscriptionData) return true;
 
@@ -68,116 +76,74 @@ export const useSubscription = (customerId) => {
     return false;
   }, []);
 
-  const shouldContinuePolling = useCallback(
-    (subscriptionData) => {
-      // If status is already confirmed, don't continue polling
-      if (statusConfirmedRef.current) return false;
-
-      // If we have valid subscription data, we can confirm status
-      if (subscriptionData && subscriptionData.subscription_status) {
-        // For active subscriptions with remaining attempts, we can stop polling
-        if (
-          subscriptionData.subscription_status === SUBSCRIPTION_STATUS.ACTIVE &&
-          hasRemainingAttempts(subscriptionData)
-        ) {
-          return false;
-        }
-
-        // For expired or invalid subscriptions, we can also stop polling
-        if (
-          isSubscriptionExpired(subscriptionData) ||
-          subscriptionData.subscription_status !== SUBSCRIPTION_STATUS.ACTIVE
-        ) {
-          return false;
-        }
-      }
-
-      // Continue polling if we don't have definitive status yet
-      return true;
-    },
-    [hasRemainingAttempts, isSubscriptionExpired],
-  );
-
+  // Stop polling and clear interval
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    pollingAttemptsRef.current = 0;
   }, []);
 
+  // Reset all polling attempts and flags
   const resetPollingAttempts = useCallback(() => {
     maxAttemptsReachedRef.current = false;
     pollingAttemptsRef.current = 0;
-    statusConfirmedRef.current = false; // Reset status confirmation
+    statusConfirmedRef.current = false;
     toastShownRef.current = false;
+    initializedRef.current = false;
+    tempSubscriptionRef.current = null;
+    tempShowWidgetRef.current = false;
+    setLoading(true);
+    setSubscription(null);
+    setShowWidget(false);
+    setError(null);
   }, []);
 
-  const startPolling = useCallback(
-    (interval, fetchFunction) => {
-      if (maxAttemptsReachedRef.current || statusConfirmedRef.current) {
-        console.log(
-          "Polling blocked: maximum attempts reached or status confirmed",
-        );
-        return;
-      }
-
-      stopPolling();
-
-      pollingIntervalRef.current = setInterval(() => {
-        pollingAttemptsRef.current += 1;
-
-        // Stop if max attempts reached
-        if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
-          stopPolling();
-          maxAttemptsReachedRef.current = true;
-
-          if (!toastShownRef.current) {
-            toast.error("Unable to verify subscription status. Please try again later.");
-            toastShownRef.current = true; // Mark toast as shown
-          }
-
-          console.log(
-            "Max polling attempts reached - polling stopped permanently",
-          );
-          return;
+  // Finalize status after polling completes
+  const finalizeStatus = useCallback(() => {
+    if (tempSubscriptionRef.current) {
+      setSubscription(tempSubscriptionRef.current);
+      setShowWidget(tempShowWidgetRef.current);
+      statusConfirmedRef.current = true;
+      
+      if (!toastShownRef.current) {
+        if (tempShowWidgetRef.current) {
+          toast.success("Subscription verified successfully!");
+        } else {
+          toast.info("Subscription status confirmed.");
         }
-
-        fetchFunction();
-      }, interval);
-    },
-    [stopPolling],
-  );
-
-  const determinePollingInterval = useCallback(
-    (subscriptionData) => {
-      if (!subscriptionData) return POLLING_INTERVALS.ERROR;
-
-      if (isSubscriptionExpired(subscriptionData)) {
-        return POLLING_INTERVALS.EXPIRED;
+        toastShownRef.current = true;
       }
-
-      if (hasRemainingAttempts(subscriptionData)) {
-        return POLLING_INTERVALS.ACTIVE;
+      console.log("✅ Final status set after 20 polling attempts");
+    } else {
+      setShowWidget(false);
+      setSubscription(null);
+      if (!toastShownRef.current) {
+        toast.info("No active subscription found after 20 attempts.");
+        toastShownRef.current = true;
       }
+    }
+    
+    setLoading(false);
+    maxAttemptsReachedRef.current = true;
+  }, []);
 
-      return POLLING_INTERVALS.ERROR;
-    },
-    [isSubscriptionExpired, hasRemainingAttempts],
-  );
-
+  // Fetch subscription data - DON'T SET STATUS UNTIL MAX REACHED
   const fetchSubscription = useCallback(async () => {
-    if (maxAttemptsReachedRef.current || statusConfirmedRef.current) {
-      console.log(
-        "Fetch blocked: maximum polling attempts reached or status confirmed",
-      );
+    // Block fetch if max attempts reached
+    if (maxAttemptsReachedRef.current) {
+      console.log("Fetch blocked: maximum polling attempts reached");
+      stopPolling();
       return;
     }
 
-    if (!customerId) return;
+    if (!customerId) {
+      setLoading(false);
+      stopPolling();
+      return;
+    }
 
     try {
-      setLoading(true);
       setError(null);
 
       const response = await fetch(API_ENDPOINTS.SUBSCRIPTION_STATUS, {
@@ -195,79 +161,83 @@ export const useSubscription = (customerId) => {
       const { success, subscription: subscriptionData } = data;
 
       if (success && subscriptionData) {
-        setSubscription(subscriptionData);
-        setError(null);
+        // Store data temporarily but don't set state until max attempts
+        tempSubscriptionRef.current = subscriptionData;
+        tempShowWidgetRef.current = hasRemainingAttempts(subscriptionData);
 
-        const shouldShowWidget = hasRemainingAttempts(subscriptionData);
-        setShowWidget(shouldShowWidget);
+        // Increment attempt counter
+        pollingAttemptsRef.current += 1;
+        console.log(`Polling attempt ${pollingAttemptsRef.current} of ${MAX_POLLING_ATTEMPTS}`);
 
-        // Check if we should continue polling or stop
-        const continuePolling = shouldContinuePolling(subscriptionData);
-
-        if (!continuePolling) {
-          // Status is confirmed - stop polling permanently
-          statusConfirmedRef.current = true;
-          stopPolling();
-          console.log("Subscription status confirmed - polling stopped");
-        } else {
-          // Continue polling with appropriate interval
-          const pollingInterval = determinePollingInterval(subscriptionData);
-          startPolling(pollingInterval, fetchSubscription);
-        }
-
-        if (isSubscriptionExpired(subscriptionData)) {
-          toast.error(
-            `Your ${subscriptionData?.subscribe_plan_name || "subscription"} has expired. Please upgrade or renew your plan.`,
-          );
-        }
-      } else {
-        setShowWidget(false);
-        setSubscription(null);
-
-        // If we get an empty response but have reached max attempts, stop
+        // Check if we've reached max attempts (20) - ONLY THEN SET STATUS
         if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
-          // Stop a bit earlier for empty responses
-          statusConfirmedRef.current = true;
           stopPolling();
+          finalizeStatus();
+          console.log("Max polling attempts reached (20) - final status set");
+        }
+
+      } else {
+        // Increment attempt counter for failed responses
+        pollingAttemptsRef.current += 1;
+        console.log(`Polling attempt ${pollingAttemptsRef.current} of ${MAX_POLLING_ATTEMPTS}`);
+
+        // Stop after max attempts even if no subscription found
+        if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
+          stopPolling();
+          finalizeStatus();
         }
       }
     } catch (error) {
       console.error("Subscription fetch error:", error);
       setError(error.message);
-      setShowWidget(false);
+      
+      // Increment attempt counter for errors
+      pollingAttemptsRef.current += 1;
+      console.log(`Polling attempt ${pollingAttemptsRef.current} of ${MAX_POLLING_ATTEMPTS}`);
 
-      // Only continue polling if we haven't confirmed status and haven't reached max attempts
-      if (!statusConfirmedRef.current && !maxAttemptsReachedRef.current) {
-        startPolling(POLLING_INTERVALS.ERROR, fetchSubscription);
+      // Stop after max attempts on errors
+      if (pollingAttemptsRef.current >= MAX_POLLING_ATTEMPTS) {
+        stopPolling();
+        finalizeStatus();
       }
-    } finally {
-      setLoading(false);
     }
-  }, [
-    customerId,
-    hasRemainingAttempts,
-    isSubscriptionExpired,
-    shouldContinuePolling,
-    startPolling,
-    stopPolling,
-    determinePollingInterval,
-  ]);
+  }, [customerId, hasRemainingAttempts, stopPolling, finalizeStatus]);
 
+  // Initialize polling when customer data is available
   const initializePolling = useCallback(() => {
-    if (!customerId) return;
+    // Prevent multiple initializations
+    if (initializedRef.current || !customerId) {
+      return;
+    }
 
+    console.log("🚀 Initializing polling for 20 attempts for customer:", customerId);
+    initializedRef.current = true;
     resetPollingAttempts();
     stopPolling();
 
-    startPolling(POLLING_INTERVALS.INITIAL, fetchSubscription);
-  }, [
-    customerId,
-    stopPolling,
-    startPolling,
-    fetchSubscription,
-    resetPollingAttempts,
-  ]);
+    // Start the polling process
+    const startPollingProcess = () => {
+      if (maxAttemptsReachedRef.current) {
+        return;
+      }
 
+      // Execute the fetch
+      fetchSubscription();
+
+      // Schedule next poll if we haven't reached max attempts
+      if (pollingAttemptsRef.current < MAX_POLLING_ATTEMPTS) {
+        const nextInterval = pollingAttemptsRef.current === 0 ? 
+          POLLING_INTERVALS.INITIAL : POLLING_INTERVALS.ACTIVE;
+        
+        pollingIntervalRef.current = setTimeout(startPollingProcess, nextInterval);
+      }
+    };
+
+    // Start the first poll immediately
+    startPollingProcess();
+  }, [customerId, stopPolling, fetchSubscription, resetPollingAttempts]);
+
+  // Cleanup on component unmount
   useEffect(() => {
     return () => {
       stopPolling();
@@ -277,7 +247,7 @@ export const useSubscription = (customerId) => {
   return {
     subscription,
     showWidget,
-    loading,
+    loading: loading && !maxAttemptsReachedRef.current,
     error,
     fetchSubscription,
     initializePolling,
@@ -285,7 +255,8 @@ export const useSubscription = (customerId) => {
     resetPollingAttempts,
     hasRemainingAttempts: () => hasRemainingAttempts(subscription),
     isExpired: () => isSubscriptionExpired(subscription),
-    maxAttemptsReached: () => maxAttemptsReachedRef.current,
-    statusConfirmed: () => statusConfirmedRef.current, // NEW: Expose status confirmation
+    maxAttemptsReached: maxAttemptsReachedRef.current,
+    statusConfirmed: statusConfirmedRef.current,
+    pollingAttempts: pollingAttemptsRef.current,
   };
 };

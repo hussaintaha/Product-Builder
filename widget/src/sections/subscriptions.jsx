@@ -71,7 +71,11 @@ const pricingPlans = [
 ];
 
 const Subscriptions = ({ customer }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    pause: false,
+    cancel: false,
+    resume: false
+  });
   const [loading, setLoading] = useState(false);
   const [subscription, setSubscription] = useState(null);
 
@@ -169,7 +173,12 @@ const Subscriptions = ({ customer }) => {
   }, []);
 
   const handleSubscriptionManage = async (subscriptionId, action) => {
-    setIsProcessing(true);
+    // Set loading state only for this specific action
+    setLoadingStates(prev => ({
+      ...prev,
+      [action]: true
+    }));
+    
     try {
       const response = await fetch(
         "/apps/public/api/v1/public/seal-subscriptions-manage",
@@ -198,7 +207,10 @@ const Subscriptions = ({ customer }) => {
       console.error(`Error ${action} subscription:`, error);
       toast.error(`Failed to ${action} subscription. Please try again.`);
     } finally {
-      setIsProcessing(false);
+      setLoadingStates(prev => ({
+        ...prev,
+        [action]: false
+      }));
     }
   };
 
@@ -432,136 +444,146 @@ const Subscriptions = ({ customer }) => {
                   </div>
                 ))}
               </div>
+              <div style={styles.upgradeButtonContainer}>
+                <a
+                  href="/pages/pricing"
+                  style={styles.upgradeButton}
+                  className="upgrade-plan-btn"
+                >
+                  View All Plans & Upgrade
+                </a>
+              </div>
             </div>
           )}
 
-          {/* Action Buttons - Only show for paid subscriptions with valid subscription ID */}
-          {!isFreeAccount && hasValidSubscriptionId && (
-            <div style={styles.buttonContainer}>
-              {subscription.subscription_status === "paused" ? (
-                <>
-                  {/* Resume Button */}
-                  <button
-                    onClick={() =>
-                      handleSubscriptionManage(
-                        subscription.subscription_id,
-                        "resume",
-                      )
-                    }
-                    disabled={isProcessing}
-                    className="activate-btn"
-                    style={{
-                      ...styles.button,
-                      ...styles.activateButton,
-                      ...(isProcessing ? styles.disabledButton : {}),
-                    }}
-                  >
-                    {isProcessing ? "Processing..." : "Resume Subscription"}
-                  </button>
-
-                  {/* Cancel Button */}
-                  <button
-                    onClick={() =>
-                      handleSubscriptionManage(
-                        subscription.subscription_id,
-                        "cancel",
-                      )
-                    }
-                    disabled={isProcessing}
-                    className="cancel-btn"
-                    style={{
-                      ...styles.button,
-                      ...styles.cancelButton,
-                      ...(isProcessing ? styles.disabledButton : {}),
-                    }}
-                  >
-                    {isProcessing ? "Processing..." : "Cancel Subscription"}
-                  </button>
-                </>
-              ) : subscription.subscription_status === "active" ? (
-                <>
-                  {/* Pause Button */}
-                  <button
-                    onClick={() =>
-                      handleSubscriptionManage(
-                        subscription.subscription_id,
-                        "pause",
-                      )
-                    }
-                    disabled={isProcessing}
-                    className="pause-btn"
-                    style={{
-                      ...styles.button,
-                      ...styles.pauseButton,
-                      ...(isProcessing ? styles.disabledButton : {}),
-                    }}
-                  >
-                    {isProcessing ? "Processing..." : "Pause Subscription"}
-                  </button>
-
-                  {/* Cancel Button */}
-                  <button
-                    onClick={() =>
-                      handleSubscriptionManage(
-                        subscription.subscription_id,
-                        "cancel",
-                      )
-                    }
-                    disabled={isProcessing}
-                    className="cancel-btn"
-                    style={{
-                      ...styles.button,
-                      ...styles.cancelButton,
-                      ...(isProcessing ? styles.disabledButton : {}),
-                    }}
-                  >
-                    {isProcessing ? "Processing..." : "Cancel Subscription"}
-                  </button>
-                </>
-              ) : null}
+          {/* Subscription Actions */}
+          {hasValidSubscriptionId && (
+            <div style={styles.actionsCard}>
+              <h3 style={styles.cardTitle}>Subscription Actions</h3>
+              <div style={styles.actionsContent}>
+                <div style={styles.actionsGrid}>
+                  {subscription.subscription_status === "active" && (
+                    <>
+                      <button
+                        onClick={() =>
+                          handleSubscriptionManage(
+                            subscription.subscription_id,
+                            "pause",
+                          )
+                        }
+                        disabled={loadingStates.pause}
+                        style={{
+                          ...styles.actionButton,
+                          ...styles.pauseButton,
+                        }}
+                        className="pause-btn"
+                      >
+                        {loadingStates.pause ? "Pausing..." : "Pause Subscription"}
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleSubscriptionManage(
+                            subscription.subscription_id,
+                            "cancel",
+                          )
+                        }
+                        disabled={loadingStates.cancel}
+                        style={{
+                          ...styles.actionButton,
+                          ...styles.cancelButton,
+                        }}
+                        className="cancel-btn"
+                      >
+                        {loadingStates.cancel ? "Cancelling..." : "Cancel Subscription"}
+                      </button>
+                    </>
+                  )}
+                  {subscription.subscription_status === "paused" && (
+                    <button
+                      onClick={() =>
+                        handleSubscriptionManage(
+                          subscription.subscription_id,
+                          "activate",
+                        )
+                      }
+                      disabled={loadingStates.resume}
+                      style={{
+                        ...styles.actionButton,
+                        ...styles.activateButton,
+                      }}
+                      className="activate-btn"
+                    >
+                      {loadingStates.resume ? "Activating..." : "Activate Subscription"}
+                    </button>
+                  )}
+                </div>
+                <p style={styles.actionsNote}>
+                  Note: You can pause your subscription for up to 3 months. Your
+                  subscription will automatically resume after the pause period.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Help Text */}
-          <div style={styles.helpText}>
-            <div style={styles.helpContent}>
-              <strong>Note:</strong>{" "}
-              {isFreeAccount &&
-                "You are currently on a free plan. Upgrade to a paid subscription to access premium features and increased usage limits."}
-              {!isFreeAccount &&
-                subscription.subscription_status === "active" &&
-                hasValidSubscriptionId &&
-                "Pausing your subscription will temporarily stop billing and deliveries. You can resume anytime. Canceling will permanently end your subscription."}
-              {!isFreeAccount &&
-                subscription.subscription_status === "paused" &&
-                "Your subscription is currently paused. Reactivate to resume billing and deliveries, or cancel to permanently end your subscription."}
-              {!isFreeAccount &&
-                subscription.subscription_status === "cancelled" &&
-                "Your subscription has been cancelled. You can reactivate it to resume your subscription benefits."}
-              {!isFreeAccount &&
-                !hasValidSubscriptionId &&
-                "Subscription management is not available at this time. Please contact support if you need assistance."}
+          {/* Additional Information */}
+          <div style={styles.additionalInfo}>
+            <h3 style={styles.cardTitle}>Additional Information</h3>
+            <div style={styles.infoGrid}>
+              <div style={styles.infoItem}>
+                <span style={styles.label}>Created: </span>
+                <span style={styles.value}>
+                  {new Date(
+                    subscription.created_at,
+                  ).toLocaleDateString()}
+                </span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.label}>Next Billing Date: </span>
+                <span style={styles.value}>
+                  {subscription.next_billing_date
+                    ? new Date(
+                        subscription.next_billing_date,
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </span>
+              </div>
+              {subscription.pause_date && (
+                <div style={styles.infoItem}>
+                  <span style={styles.label}>Pause Date: </span>
+                  <span style={styles.value}>
+                    {new Date(
+                      subscription.pause_date,
+                    ).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              {subscription.resume_date && (
+                <div style={styles.infoItem}>
+                  <span style={styles.label}>Resume Date: </span>
+                  <span style={styles.value}>
+                    {new Date(
+                      subscription.resume_date,
+                    ).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Fallback Upgrade CTA for Free Users (if no plans shown above) */}
-          {isFreeAccount && upgradePlans.length === 0 && (
-            <div style={styles.upgradeSection}>
-              <button
-                onClick={() => (window.location.href = "/pricing")}
-                style={styles.upgradeButton}
-              >
-                View All Plans
-              </button>
-            </div>
-          )}
         </div>
       ) : (
         <div style={styles.noSubscription}>
-          <div style={styles.noSubscriptionTitle}>No subscription found</div>
-          <p style={styles.noSubscriptionText}>
-            You don't have any subscription information available at the moment.
-          </p>
+          <div style={styles.noSubscriptionContent}>
+            <h2 style={styles.noSubscriptionTitle}>
+              No Active Subscription
+            </h2>
+            <p style={styles.noSubscriptionText}>
+              You don't have an active subscription. Choose a plan to get
+              started with our premium features.
+            </p>
+            <a href="/pages/pricing" style={styles.ctaButton}>
+              View Pricing Plans
+            </a>
+          </div>
         </div>
       )}
     </div>
@@ -570,328 +592,379 @@ const Subscriptions = ({ customer }) => {
 
 const styles = {
   container: {
-    maxWidth: "800px",
+    maxWidth: "1200px",
     margin: "0 auto",
-    padding: "24px",
+    padding: "2rem",
     fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loading: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    height: "128px",
+    padding: "4rem",
   },
   loadingText: {
-    fontSize: "18px",
+    fontSize: "1.2rem",
     color: "#666",
   },
   subscriptionCard: {
-    backgroundColor: "#ffffff",
+    background: "#fff",
     borderRadius: "12px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    padding: "24px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
+    padding: "2rem",
     border: "1px solid #e5e7eb",
   },
+  backButtonContainer: {
+    marginBottom: "1.5rem",
+  },
+  backButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.75rem 1rem",
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: "8px",
+    color: "#475569",
+    textDecoration: "none",
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  backArrow: {
+    fontSize: "1rem",
+  },
   header: {
-    borderBottom: "1px solid #e5e7eb",
-    paddingBottom: "16px",
-    marginBottom: "24px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "2rem",
+    flexWrap: "wrap",
+    gap: "1rem",
   },
   title: {
-    fontSize: "24px",
-    fontWeight: "bold",
+    fontSize: "1.875rem",
+    fontWeight: "700",
     color: "#1f2937",
-    margin: "0 0 8px 0",
+    margin: "0",
   },
   statusContainer: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "1rem",
     flexWrap: "wrap",
   },
   statusBadge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "4px 12px",
+    gap: "0.5rem",
+    padding: "0.5rem 1rem",
     borderRadius: "20px",
-    fontSize: "14px",
-    fontWeight: "500",
+    fontSize: "0.875rem",
+    fontWeight: "600",
   },
   statusDot: {
     width: "8px",
     height: "8px",
     borderRadius: "50%",
-    marginRight: "8px",
   },
   subscriptionId: {
+    fontSize: "0.875rem",
     color: "#6b7280",
-    fontSize: "14px",
+    fontFamily: "monospace",
   },
   gridContainer: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "24px",
-    marginBottom: "24px",
+    gap: "1.5rem",
+    marginBottom: "2rem",
   },
   infoCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f8fafc",
     borderRadius: "8px",
-    padding: "16px",
+    padding: "1.5rem",
+    border: "1px solid #e2e8f0",
   },
   cardTitle: {
-    fontSize: "16px",
+    fontSize: "1.125rem",
     fontWeight: "600",
     color: "#1f2937",
-    margin: "0 0 12px 0",
+    margin: "0 0 1rem 0",
   },
   infoContent: {
     display: "flex",
     flexDirection: "column",
-    gap: "8px",
+    gap: "0.75rem",
   },
   infoRow: {
-    fontSize: "14px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   label: {
+    fontSize: "0.875rem",
     color: "#6b7280",
+    fontWeight: "500",
   },
   value: {
-    fontWeight: "500",
+    fontSize: "0.875rem",
     color: "#1f2937",
+    fontWeight: "600",
   },
   customerIdValue: {
+    fontSize: "0.75rem",
+    color: "#6b7280",
     fontFamily: "monospace",
-    fontSize: "12px",
-    color: "#1f2937",
+    fontWeight: "400",
   },
   priceValue: {
-    fontWeight: "500",
+    fontSize: "1rem",
     color: "#059669",
+    fontWeight: "700",
   },
   pricingSummary: {
-    backgroundColor: "#eff6ff",
+    backgroundColor: "#f0f9ff",
     borderRadius: "8px",
-    padding: "16px",
-    marginBottom: "24px",
+    padding: "1.5rem",
+    border: "1px solid #bae6fd",
+    marginBottom: "2rem",
   },
   pricingGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-    gap: "16px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "1rem",
   },
   pricingItem: {
     textAlign: "center",
+    padding: "1rem",
   },
   pricingLabel: {
-    color: "#6b7280",
-    fontSize: "14px",
-    marginBottom: "4px",
+    fontSize: "0.875rem",
+    color: "#0369a1",
+    marginBottom: "0.5rem",
+    fontWeight: "500",
   },
   originalPrice: {
-    fontSize: "18px",
-    fontWeight: "600",
-    color: "#1f2937",
+    fontSize: "1.5rem",
+    color: "#1e40af",
+    fontWeight: "700",
   },
   discountPrice: {
-    fontSize: "18px",
-    fontWeight: "600",
+    fontSize: "1.5rem",
     color: "#dc2626",
+    fontWeight: "700",
   },
   finalPrice: {
-    fontSize: "20px",
-    fontWeight: "600",
+    fontSize: "1.5rem",
     color: "#059669",
-  },
-  buttonContainer: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-    paddingTop: "16px",
-    borderTop: "1px solid #e5e7eb",
-  },
-  button: {
-    flex: 1,
-    fontWeight: "600",
-    padding: "12px 24px",
-    borderRadius: "8px",
-    border: "none",
-    cursor: "pointer",
-    fontSize: "16px",
-    transition: "all 0.2s ease-in-out",
-    minHeight: "48px",
-  },
-  pauseButton: {
-    backgroundColor: "#eab308",
-    color: "#ffffff",
-  },
-  cancelButton: {
-    backgroundColor: "#dc2626",
-    color: "#ffffff",
-  },
-  activateButton: {
-    backgroundColor: "#16a34a",
-    color: "#ffffff",
-  },
-  disabledButton: {
-    opacity: 0.6,
-    cursor: "not-allowed",
-  },
-  helpText: {
-    marginTop: "16px",
-    padding: "16px",
-    backgroundColor: "#f9fafb",
-    borderRadius: "8px",
-  },
-  helpContent: {
-    fontSize: "14px",
-    color: "#6b7280",
-    lineHeight: "1.5",
-  },
-  noSubscription: {
-    textAlign: "center",
-    padding: "48px 0",
-  },
-  noSubscriptionTitle: {
-    color: "#6b7280",
-    fontSize: "18px",
-    marginBottom: "8px",
-  },
-  noSubscriptionText: {
-    color: "#9ca3af",
-    margin: 0,
-  },
-  backButtonContainer: {
-    marginBottom: "20px",
-  },
-  backButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 16px",
-    backgroundColor: "#f3f4f6",
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
-    color: "#374151",
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    transition: "all 0.2s ease-in-out",
-    textDecoration: "none",
-  },
-  backArrow: {
-    fontSize: "16px",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   upgradeSection: {
-    marginTop: "24px",
-    padding: "20px",
     backgroundColor: "#f8fafc",
-    borderRadius: "12px",
+    borderRadius: "8px",
+    padding: "2rem",
     border: "1px solid #e2e8f0",
+    marginBottom: "2rem",
   },
   upgradeSectionTitle: {
-    fontSize: "20px",
+    fontSize: "1.5rem",
     fontWeight: "600",
     color: "#1f2937",
-    margin: "0 0 8px 0",
+    margin: "0 0 0.5rem 0",
     textAlign: "center",
   },
   upgradeSectionSubtitle: {
-    fontSize: "14px",
+    fontSize: "1rem",
     color: "#6b7280",
     textAlign: "center",
-    margin: "0 0 20px 0",
+    margin: "0 0 2rem 0",
   },
   upgradeGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "16px",
+    gap: "1.5rem",
+    marginBottom: "2rem",
   },
   upgradePlanCard: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "8px",
-    padding: "20px",
+    backgroundColor: "#fff",
+    borderRadius: "12px",
+    padding: "1.5rem",
+    border: "2px solid #e2e8f0",
     transition: "all 0.3s ease",
-    cursor: "pointer",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
   },
   upgradePlanHeader: {
-    marginBottom: "16px",
+    marginBottom: "1rem",
   },
   upgradePlanTier: {
-    fontSize: "18px",
+    fontSize: "1.25rem",
     fontWeight: "600",
     color: "#1f2937",
-    margin: "0 0 8px 0",
+    margin: "0 0 0.5rem 0",
   },
   upgradePlanPrice: {
     display: "flex",
     alignItems: "baseline",
-    marginBottom: "8px",
+    marginBottom: "0.5rem",
   },
   upgradePriceCurrency: {
-    fontSize: "14px",
-    fontWeight: "500",
+    fontSize: "1rem",
     color: "#6b7280",
+    fontWeight: "600",
+    marginRight: "0.25rem",
   },
   upgradePriceAmount: {
-    fontSize: "24px",
+    fontSize: "1.75rem",
     fontWeight: "700",
     color: "#1f2937",
-    margin: "0 4px",
   },
   upgradePriceCycle: {
-    fontSize: "14px",
+    fontSize: "0.875rem",
     color: "#6b7280",
+    marginLeft: "0.25rem",
   },
   upgradePlanPurpose: {
-    fontSize: "13px",
+    fontSize: "0.875rem",
     color: "#6b7280",
-    margin: 0,
+    margin: "0",
     lineHeight: "1.4",
   },
   upgradeFeaturesList: {
     listStyle: "none",
-    padding: 0,
-    margin: "0 0 20px 0",
+    padding: "0",
+    margin: "0",
   },
   upgradeFeatureItem: {
-    fontSize: "13px",
-    color: "#4b5563",
-    marginBottom: "6px",
-    paddingLeft: "16px",
+    fontSize: "0.875rem",
+    color: "#374151",
+    padding: "0.25rem 0",
     position: "relative",
+    paddingLeft: "1rem",
+  },
+  upgradeFeatureItemBefore: {
+    content: "'✓'",
+    position: "absolute",
+    left: "0",
+    color: "#10b981",
+    fontWeight: "bold",
   },
   upgradeFeatureMore: {
-    fontSize: "13px",
+    fontSize: "0.75rem",
     color: "#6b7280",
     fontStyle: "italic",
-    marginBottom: "6px",
-    paddingLeft: "16px",
+    padding: "0.25rem 0",
   },
-  upgradePlanButton: {
-    width: "100%",
-    padding: "10px 16px",
-    backgroundColor: "#2563eb",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    transition: "all 0.2s ease-in-out",
+  upgradeButtonContainer: {
+    textAlign: "center",
   },
   upgradeButton: {
-    backgroundColor: "#2563eb",
-    color: "#ffffff",
-    fontWeight: "600",
-    padding: "12px 32px",
+    display: "inline-block",
+    padding: "0.75rem 2rem",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    textDecoration: "none",
     borderRadius: "8px",
+    fontWeight: "600",
+    transition: "all 0.3s ease",
     border: "none",
     cursor: "pointer",
-    fontSize: "16px",
-    transition: "all 0.2s ease-in-out",
+    fontSize: "1rem",
+  },
+  actionsCard: {
+    backgroundColor: "#fef7ed",
+    borderRadius: "8px",
+    padding: "1.5rem",
+    border: "1px solid #fdba74",
+    marginBottom: "2rem",
+  },
+  actionsContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  },
+  actionsGrid: {
+    display: "flex",
+    gap: "1rem",
+    flexWrap: "wrap",
+  },
+  actionButton: {
+    padding: "0.75rem 1.5rem",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "0.875rem",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    flex: "1",
+    minWidth: "160px",
+  },
+  pauseButton: {
+    backgroundColor: "#f59e0b",
+    color: "#fff",
+  },
+  cancelButton: {
+    backgroundColor: "#dc2626",
+    color: "#fff",
+  },
+  activateButton: {
+    backgroundColor: "#059669",
+    color: "#fff",
+  },
+  actionsNote: {
+    fontSize: "0.75rem",
+    color: "#92400e",
+    margin: "0",
+    lineHeight: "1.4",
+  },
+  additionalInfo: {
+    backgroundColor: "#f8fafc",
+    borderRadius: "8px",
+    padding: "1.5rem",
+    border: "1px solid #e2e8f0",
+  },
+  infoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "1rem",
+  },
+  infoItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  noSubscription: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "400px",
+  },
+  noSubscriptionContent: {
+    textAlign: "center",
+    maxWidth: "400px",
+  },
+  noSubscriptionTitle: {
+    fontSize: "1.5rem",
+    fontWeight: "600",
+    color: "#1f2937",
+    margin: "0 0 1rem 0",
+  },
+  noSubscriptionText: {
+    fontSize: "1rem",
+    color: "#6b7280",
+    margin: "0 0 2rem 0",
+    lineHeight: "1.5",
+  },
+  ctaButton: {
+    display: "inline-block",
+    padding: "0.75rem 2rem",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    textDecoration: "none",
+    borderRadius: "8px",
+    fontWeight: "600",
+    transition: "background-color 0.2s ease",
   },
 };
 

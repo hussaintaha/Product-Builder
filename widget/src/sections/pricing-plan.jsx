@@ -70,7 +70,12 @@ const pricingPlans = [
 ];
 
 const PricingPlan = () => {
-  const [localLoading, setLocalLoading] = useState(false);
+  // Individual loading states for each plan
+  const [loadingStates, setLoadingStates] = useState({
+    Starter: false,
+    Growth: false,
+    Pro: false,
+  });
 
   const fetchSellingPlan = async (product_id) => {
     try {
@@ -97,14 +102,22 @@ const PricingPlan = () => {
   };
 
   const handleAddToCart = async (plan) => {
-    setLocalLoading(true);
+    // Set loading state only for this specific plan
+    setLoadingStates(prev => ({
+      ...prev,
+      [plan.tier]: true
+    }));
+    
     console.log("Selected plan: ", plan);
     
     const sellingPlanData = await fetchSellingPlan(plan.product_id);
     
     if (!sellingPlanData) {
       console.error("Failed to fetch selling plan data");
-      setLocalLoading(false);
+      setLoadingStates(prev => ({
+        ...prev,
+        [plan.tier]: false
+      }));
       return;
     }
 
@@ -123,7 +136,10 @@ const PricingPlan = () => {
       window.location.href = url;
     } else {
       console.error("Missing product or selling plan data");
-      setLocalLoading(false);
+      setLoadingStates(prev => ({
+        ...prev,
+        [plan.tier]: false
+      }));
     }
   };
 
@@ -721,9 +737,9 @@ const PricingPlan = () => {
               <button
                 className="cta-button"
                 onClick={() => handleAddToCart(plan)}
-                disabled={localLoading}
+                disabled={loadingStates[plan.tier]}
               >
-                {localLoading ? "Loading..." : "Get Started"}
+                {loadingStates[plan.tier] ? "Loading..." : "Get Started"}
               </button>
             </div>
           ))}

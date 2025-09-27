@@ -1,3 +1,4 @@
+// subscription.js
 export const SUBSCRIPTION_STATUS = {
   ACTIVE: 'active',
   EXPIRED: 'expired',
@@ -22,14 +23,11 @@ export const SELECTORS = {
   WIDGET_ROOT: '#WIDGET'
 };
 
-
 export const POLLING_INTERVALS = {
   INITIAL: 500,       
-  ACTIVE: 30000,      
-  EXPIRED: 60000,     
-  ERROR: 10000         
+  ACTIVE: 5000,      
+  ERROR: 3000             
 };
 
-export const MAX_POLLING_ATTEMPTS = 20; 
-
+export const MAX_POLLING_ATTEMPTS = 20; // Changed from 8 to 20
 export const POLLING_INTERVAL = 500;
